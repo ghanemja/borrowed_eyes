@@ -14,7 +14,7 @@ Open `index.html` in a current desktop or mobile browser (Chrome, Edge, Firefox 
 
 `viewer/index.html` is the earlier 2D version: three painted scenes viewed through eight animals' eyes, with a side-by-side comparison slider.
 
-**Controls:** W A S D or arrow keys to move, the mouse to look (click into the game to capture it, Esc to release), Space and Shift to rise and drop, and a left click or F to take a photo. On a phone, drag the left side to move, drag the right side to look, and use the on-screen buttons. Q and E switch between eyes you own, C compares with human vision, N toggles night, H shows a hint, B opens the field book and M enlarges the map.
+**Controls:** W A S D or arrow keys to move, drag with the mouse to look (or press L for mouse look, and Esc or L to leave it), Space and Shift to rise and drop, and a click or F to take a photo. On a phone, drag the left side to move, drag the right side to look, and use the on-screen buttons. Q and E switch between eyes you own, C compares with human vision, N toggles night, H shows a hint, B opens the field book and M enlarges the map.
 
 ## The animals
 

@@ -75,6 +75,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .snap{position:absolute;right:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 118px);width:62px;height:62px;border-radius:50%;border:3px solid #fff;background:rgba(242,179,61,.92);box-shadow:0 4px 18px rgba(0,0,0,.4);display:grid;place-items:center}
 .snap svg{width:26px;height:26px}
 .snap:active{transform:scale(.94)}
+.lockpill{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 128px);transform:translateX(-50%);font:600 13px/1 var(--body);color:#fff;background:rgba(8,10,10,.78);border:1px solid rgba(242,179,61,.6);padding:9px 13px;border-radius:999px;pointer-events:none;white-space:nowrap}
 .hbtns{position:absolute;right:23px;bottom:calc(env(safe-area-inset-bottom,0px) + 192px);display:flex;flex-direction:column;gap:8px}
 .hb{width:48px;height:42px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:#fff;font-size:15px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);touch-action:none}
 .hb:active{background:rgba(242,179,61,.5)}
@@ -163,6 +164,7 @@ button{font:inherit;color:inherit;cursor:pointer}
     <button class="tbtn" id="bookBtn">Field book</button>
   </div>
   <div class="toast" id="toast" style="opacity:0"></div>
+  <div class="lockpill" id="lockPill" hidden>Mouse look on. Press Esc or L to get your cursor back.</div>
   <div class="unlock" id="unlock" hidden><div class="inner"><div class="face front"><div class="bigsil locked" id="unSil"></div><div class="cap">Who's this?</div></div><div class="face back"><img id="unImg" alt=""><div class="cap" id="unCap"></div></div></div></div>
   <div class="bottom">
     <div class="abil" id="abil"></div>
@@ -178,7 +180,7 @@ button{font:inherit;color:inherit;cursor:pointer}
       <p>14 animals are hiding in this valley. Find one, take its photo, and you get to see through its eyes.</p>
       <dl class="controls">
         <dt>Move</dt><dd>W A S D or arrow keys. On a phone, drag the left side.</dd>
-        <dt>Look</dt><dd>Mouse (Esc frees it). On a phone, drag the right side.</dd>
+        <dt>Look</dt><dd>Drag with the mouse, or press L for mouse look. On a phone, drag the right side.</dd>
         <dt>Up / down</dt><dd>Space and Shift, or the ▲ ▼ buttons</dd>
         <dt>Photo</dt><dd>Click, F, or the camera button</dd>
       </dl>
@@ -1139,7 +1141,7 @@ function toggleHint(){S.hint=!S.hint;$('#hintBtn').setAttribute('aria-pressed',S
 $('#cmpBtn').onclick=()=>toggleCompare();
 $('#snap').onclick=()=>{S.snapNow=true;};
 for(const [id,k] of [['#upBtn','up'],['#dnBtn','dn']]){const b=$(id);b.addEventListener('pointerdown',e=>{HOLD[k]=true;b.setPointerCapture(e.pointerId);e.preventDefault();});const off=()=>{HOLD[k]=false;};b.addEventListener('pointerup',off);b.addEventListener('pointercancel',off);b.addEventListener('lostpointercapture',off);}
-$('#start').onclick=()=>{$('#intro').hidden=true;S.started=true;lockMouse();S.t0=performance.now();toast(TOUCH?'You start at the pond. Find the turtle basking on a log and tap the camera to photograph it.':'You start at the pond. Find the turtle basking on a log, then click to photograph it.');};
+$('#start').onclick=()=>{$('#intro').hidden=true;S.started=true;S.t0=performance.now();toast(TOUCH?'You start at the pond. Find the turtle basking on a log and tap the camera to photograph it.':'You start at the pond. Drag to look around, find the turtle basking on a log, then click it to take a photo.');};
 $('#keep').onclick=()=>{$('#done').hidden=true;};
 function toggleNight(){S.nightTarget=S.nightTarget>.5?0:1;$('#nightBtn').textContent=S.nightTarget?'Daybreak':'Nightfall';toast(S.nightTarget?'Night falls. Some animals only come out now, and you will need eyes that work in the dark.':'Morning returns.');}
 function toggleCompare(){S.compare=!S.compare;$('#cmpBtn').setAttribute('aria-pressed',S.compare);$('#cmpline').hidden=!S.compare;$('#vlB').hidden=!S.compare;setAnimal(S.animal);}
@@ -1152,6 +1154,7 @@ addEventListener('keydown',e=>{
   if(!S.started)return;
   if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','shift',' '].includes(k)){keys.add(k);e.preventDefault();}
   if(k==='f'||k==='enter'){S.snapNow=true;e.preventDefault();}
+  if(k==='l'){if(document.pointerLockElement)document.exitPointerLock();else lockMouse();}
   if(k==='n')toggleNight();if(k==='c')toggleCompare();if(k==='h')toggleHint();if(k==='m')$('#map').classList.toggle('big');if(k==='b')openBook(ANIMALS.findIndex(a=>a.id===S.animal));
   if(k==='q'||k==='e'){const o=owned(),i=o.findIndex(a=>a.id===S.animal);setAnimal(o[(i+(k==='e'?1:-1)+o.length)%o.length].id);}
 });
@@ -1161,12 +1164,12 @@ const ptrs=new Map(); const joy={id:null,x:0,y:0,dx:0,dy:0};
 const locked=()=>document.pointerLockElement===canvas;
 function lockMouse(){if(TOUCH||locked()||!canvas.requestPointerLock)return;try{const r=canvas.requestPointerLock();if(r&&r.catch)r.catch(()=>{});}catch(_){}}
 document.addEventListener('mousemove',e=>{if(!locked())return;S.yaw-=e.movementX*.0024;S.pitch=Math.max(-1.45,Math.min(1.45,S.pitch-e.movementY*.0024));});
-document.addEventListener('pointerlockchange',()=>{canvas.classList.toggle('locked',locked());if(!locked()&&S.started&&$('#bookOv').hidden&&$('#done').hidden)toast('Mouse released. Click the scene to look around again.');});
+document.addEventListener('pointerlockchange',()=>{canvas.classList.toggle('locked',locked());$('#lockPill').hidden=!locked();});
 canvas.addEventListener('pointerdown',e=>{
-  if(e.pointerType==='mouse'){if(locked()){if(e.button===0)S.snapNow=true;return;}if(S.started&&e.button===0)lockMouse();}
+  if(e.pointerType==='mouse'&&locked()){if(e.button===0)S.snapNow=true;return;}
   canvas.setPointerCapture(e.pointerId);
   if(e.pointerType!=='mouse'&&e.clientX<innerWidth*.42&&joy.id==null){joy.id=e.pointerId;joy.x=e.clientX;joy.y=e.clientY;joy.dx=joy.dy=0;const j=$('#joy');j.hidden=false;j.style.left=e.clientX+'px';j.style.top=e.clientY+'px';$('#joyKnob').style.transform='';return;}
-  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});canvas.classList.add('drag');
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY,t0:performance.now(),mouse:e.pointerType==='mouse'});canvas.classList.add('drag');
 });
 canvas.addEventListener('pointermove',e=>{
   if(e.pointerId===joy.id){let dx=e.clientX-joy.x,dy=e.clientY-joy.y;const L=Math.hypot(dx,dy),mx=45;if(L>mx){dx*=mx/L;dy*=mx/L;}joy.dx=dx/mx;joy.dy=dy/mx;$('#joyKnob').style.transform=`translate(${dx}px,${dy}px)`;return;}
@@ -1174,7 +1177,7 @@ canvas.addEventListener('pointermove',e=>{
   const s=e.pointerType==='mouse'?.0042:.006;
   S.yaw-=(e.clientX-p.x)*s;S.pitch=Math.max(-1.35,Math.min(1.35,S.pitch-(e.clientY-p.y)*s));p.x=e.clientX;p.y=e.clientY;
 });
-const up=e=>{if(e.pointerId===joy.id){joy.id=null;joy.dx=joy.dy=0;$('#joy').hidden=true;}ptrs.delete(e.pointerId);if(!ptrs.size)canvas.classList.remove('drag');};
+const up=e=>{if(e.pointerId===joy.id){joy.id=null;joy.dx=joy.dy=0;$('#joy').hidden=true;}const pp=ptrs.get(e.pointerId);if(pp&&pp.mouse&&e.type==='pointerup'&&S.started&&Math.hypot(e.clientX-pp.x0,e.clientY-pp.y0)<6&&performance.now()-pp.t0<350)S.snapNow=true;ptrs.delete(e.pointerId);if(!ptrs.size)canvas.classList.remove('drag');};
 canvas.addEventListener('pointerup',up);canvas.addEventListener('pointercancel',up);
 
 /* ---------------- resize ---------------- */
