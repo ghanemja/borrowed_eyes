@@ -109,6 +109,12 @@ button{font:inherit;color:inherit;cursor:pointer}
 .pclue{font-size:15px;margin:0;max-width:40ch}
 .pdesc{font-size:14px;margin:0;color:#4b4132;max-width:44ch}
 .pstat{font:500 11.5px/1.5 var(--mono);color:var(--pmuted)}
+.sense{background:rgba(255,255,255,.45);border:1px solid rgba(0,0,0,.08);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:7px}
+.slab{font:600 10.5px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--pmuted)}
+.smode{font:700 16px/1.2 var(--display);color:#1f5f58}
+.svis{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:5px;display:block;background:#2b2620}
+.svis.wait{display:grid;place-items:center;color:#cbbfa8;font-size:12px}
+.sfact{font-size:13.5px;margin:0;color:#3d3426;line-height:1.45}
 .pbtn{align-self:flex-start;background:#1f5f58;color:#fff;border:0;border-radius:6px;padding:10px 14px;font-weight:600}
 .bnav{display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:10px;color:var(--ink)}
 .bnav button{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:9px 14px}
@@ -729,7 +735,7 @@ const cow=root(-15,27);cow.rotation.y=.6;
  sdfMesh(cow,[E([0,1.12,0],[.9,.4,.38]),E([.6,1.08,0],[.36,.42,.34]),E([.55,1.42,0],[.28,.12,.16]),E([0,1.45,0],[.75,.08,.18]),...both(E([-.62,1.42,.2],[.14,.1,.1])),E([-.72,1.25,0],[.32,.38,.34]),
    E([.05,.88,0],[.7,.3,.32]),E([.85,.97,0],[.16,.25,.12]),E([-.42,.74,0],[.17,.11,.15]),...both(C([-.36,.68,.06],[-.36,.6,.06],.018,.014),C([-.5,.68,.06],[-.5,.6,.06],.018,.014)),
    ...both(E([.6,1.1,.26],[.22,.28,.1]),E([-.62,1.05,.24],[.27,.33,.11])),C([-1.0,1.42,0],[-1.05,1.2,0],.05,.03),C([-1.05,1.2,0],[-1.08,.62,0],.03,.018),E([-1.08,.55,0],[.045,.1,.045])],
-   (x,y,z)=>x<-.25&&y<.82&&Math.abs(z)<.22?P:(x<-1&&y<.72?B:hol(x,y,z)),{k:.09,res:70,heat:.86});
+   (x,y,z)=>x<-.95?(y<.7?B:W):(x<-.2&&x>-.66&&y<.84&&Math.abs(z)<.2?P:hol(x,y,z)),{k:.09,res:70,heat:.86});
  const nk=pivot(cow,[.86,1.28,0]);cow.userData.neck=nk;
  sdfMesh(nk,[C([0,0,0],[.3,.1,0],.28,.2),E([.14,-.16,0],[.2,.15,.08]),C([.32,.12,0],[.62,-.2,0],.17,.12),E([.36,.12,0],[.12,.13,.15]),E([.66,-.24,0],[.11,.1,.12]),E([.52,-.25,0],[.14,.06,.09]),
    ...both(E([.3,.16,.2],[.05,.035,.13]),C([.34,.24,.09],[.33,.31,.19],.032,.012),E([.44,.06,.12],[.04,.035,.03]))],
@@ -957,6 +963,8 @@ const ANIMALS=[
    line:'Two cone types, strong in dim light, and sensitive to ultraviolet, so blues glow.',
    desc:'Deer lenses let ultraviolet through. Blue and UV-bright things stand out at dusk.'},
 ];
+const SENSE={"human": ["Three-cone color vision", "Your three cone types overlap enough that people can tell apart an estimated million or so colors."], "cow": ["Wide-angle, two-cone vision", "Cows judge depth poorly straight ahead, which is one reason cattle balk at shadows and puddles."], "horse": ["Two-cone vision with a sharp horizon band", "A horse raises or lowers its head to line things up with the sharp horizontal band across its retina."], "bee": ["Ultraviolet vision", "Many flowers carry ultraviolet \"nectar guides\", landing-strip patterns we can't see that point bees to the nectar."], "snake": ["Infrared heat sensing", "The pit organ is a thin membrane that senses warmth changes of tiny fractions of a degree, enough to strike prey in total darkness."], "hawk": ["High-acuity raptor vision", "Each hawk eye has two foveae, two sharp spots: one for looking ahead and one for looking off to the side."], "cham": ["Independent eye movement", "Each eye swivels almost 180° on its own. Before the tongue strikes, both eyes lock onto the prey to judge distance."], "frog": ["Color vision in near darkness", "Frogs have two kinds of rods where most animals have one, so they can still compare colors on nights when we see only black."], "turtle": ["Oil-droplet color vision", "Colored oil droplets sit in front of each cone like tiny filters, sharpening the difference between colors."], "fish": ["Four-cone vision", "With four cone types, goldfish see ultraviolet on top of the reds, greens and blues we see."], "mosq": ["Smell, heat and coarse sight", "A mosquito picks up the carbon dioxide in your breath from roughly 10 meters away, then uses sight and body heat up close."], "bat": ["Echolocation", "Some bats can detect obstacles as thin as a human hair just by listening to the echoes of their calls."], "scorp": ["Starlight vision", "Under ultraviolet light scorpions glow blue-green, and one idea is that the whole shell acts as a light detector."], "owl": ["Rod-rich night vision", "Owl eyes are tubes held in bony rings, not balls, so they can't move. The owl turns its head up to 270° instead."], "deer": ["Dim-light, UV-sensitive vision", "Deer lenses let ultraviolet through, so blaze orange looks dull to them while UV-bright clothing can stand out."]};
+ANIMALS.forEach(a=>{const v=SENSE[a.id];if(v){a.mode=v[0];a.fact=v[1];}});
 const byId=Object.fromEntries(ANIMALS.map(a=>[a.id,a]));
 ANIMALS.forEach(a=>{a.M=a.M||ID3;a.uvW=a.uvW||[0,0,0];a.time=a.time||1;const b=new THREE.Box3().setFromObject(a.obj);a.center=a.obj.worldToLocal(b.getCenter(new THREE.Vector3()));a.rad=b.getSize(new THREE.Vector3()).length()*.5;});
 
@@ -1098,7 +1106,8 @@ const camL=new THREE.PerspectiveCamera(70,1,.05,1400),camR=new THREE.Perspective
 /* ---------------- state ---------------- */
 const S={animal:'human',x:-30,z:12,yaw:.71,pitch:.05,eye:1.65,night:0,nightTarget:0,simT:0,started:false,t0:0,found:{human:{photo:null}},flash:0,compare:false,spot:0,spotId:null,msgT:0,book:0};
 const keys=new Set();
-const cur=()=>byId[S.animal];
+let shotA=null;const VIS={},visQ=[];
+const cur=()=>shotA||byId[S.animal];
 const owned=()=>ANIMALS.filter(a=>S.found[a.id]);
 function applyParams(a){
   const u=post.uniforms,m=a.M;u.uM.value.set(m[0],m[1],m[2],m[3],m[4],m[5],m[6],m[7],m[8]);
@@ -1127,8 +1136,8 @@ function pageHTML(i){
    <div class="pg right"><div class="pno">No. ${String(i+1).padStart(2,'0')} of ${ANIMALS.length}${when?' · '+when:''}</div>
    <h2 class="pname">${f?a.name:'Who is this?'}</h2>
    <p class="pclue">${a.clue}</p>
-   ${f?`<p class="pdesc">${a.desc}</p><button class="pbtn" data-use="${a.id}">${S.animal===a.id?'Wearing these eyes':'Use these eyes'}</button>`:`<p class="pdesc">Find it and hold it in your crosshair to borrow its eyes.</p>`}</div>`;}
-function openBook(i=S.book){S.book=i;$('#book').innerHTML=pageHTML(i);$('#bPage').textContent=`${i+1} / ${ANIMALS.length}`;$('#bookOv').hidden=false;}
+   ${f?`<p class="pdesc">${a.desc}</p>${a.mode?`<div class="sense"><div class="slab">How it senses</div><div class="smode">${a.mode}</div>${VIS[a.id]?`<img class="svis" src="${VIS[a.id]}" alt="The meadow through ${a.name.toLowerCase()} eyes">`:`<div class="svis wait">Developing…</div>`}<p class="sfact"><b>Fun fact.</b> ${a.fact}</p></div>`:''}<button class="pbtn" data-use="${a.id}">${S.animal===a.id?'Wearing these eyes':'Use these eyes'}</button>`:`<p class="pdesc">Find it and hold it in your crosshair to borrow its eyes.</p>`}</div>`;}
+function openBook(i=S.book){for(const a of ANIMALS)if(S.found[a.id]&&!VIS[a.id]&&!visQ.includes(a)&&shotA!==a)visQ.push(a);S.book=i;$('#book').innerHTML=pageHTML(i);$('#bPage').textContent=`${i+1} / ${ANIMALS.length}`;$('#bookOv').hidden=false;}
 function flip(dir){const b=$('#book');const ni=(S.book+dir+ANIMALS.length)%ANIMALS.length;
   b.className='book '+(dir>0?'flip-out':'flip-out-r');setTimeout(()=>{S.book=ni;b.innerHTML=pageHTML(ni);$('#bPage').textContent=`${ni+1} / ${ANIMALS.length}`;b.className='book '+(dir>0?'flip-in':'flip-in-r');},200);}
 let toastTimer=0;
@@ -1398,7 +1407,7 @@ function drawMap(now){
 }
 
 /* ---------------- loop ---------------- */
-let last=performance.now();const perf={t:0,n:0};
+let last=performance.now(),shotCmp=false;const perf={t:0,n:0};
 const HUMAN=byId.human;
 function frame(now){
   now=performance.now();const raw=Math.max(0,(now-last)/1000), dt=Math.min(.05,raw);last=now;
@@ -1410,7 +1419,7 @@ function frame(now){
   updateGlow(now);
   drawMap(now);
   S.flash=Math.min(1,Math.max(0,S.flash-dt*2.5));
-  post.uniforms.uFlash.value=S.flash*.8;post.uniforms.uTime.value=now/1000;
+  post.uniforms.uFlash.value=shotA?0:S.flash*.8;post.uniforms.uTime.value=now/1000;
   dome.position.copy(camera.position);stars.position.copy(camera.position);
   sun.position.copy(camera.position).addScaledVector(SUN_DIR,650);moon.position.copy(camera.position).addScaledVector(MOON_DIR,650);
   updateEnv(S.night);
@@ -1436,7 +1445,10 @@ function frame(now){
     post.uniforms.uRes.value.set(W*pr,Hh*pr);post.uniforms.uCropA.value=0;post.uniforms.uCropB.value=1;
     applyParams(a);renderer.render(postScene,postCam);
   }
-  if(pendingPhoto){const t=pendingPhoto;pendingPhoto=null;finishAcquire(t);}
+  if(shotA){const c=document.createElement('canvas');c.width=480;c.height=270;const x=c.getContext('2d');const w=canvas.width,h=canvas.height,sc=Math.max(480/w,270/h);x.drawImage(canvas,(480-w*sc)/2,(270-h*sc)/2,w*sc,h*sc);VIS[shotA.id]=c.toDataURL('image/jpeg',.8);
+    const id=shotA.id;shotA=null;S.compare=shotCmp;if(!$('#bookOv').hidden&&ANIMALS[S.book].id===id)$('#book').innerHTML=pageHTML(S.book);}
+  if(pendingPhoto){const t=pendingPhoto;pendingPhoto=null;finishAcquire(t);visQ.push(t);}
+  else if(visQ.length){shotA=visQ.shift();shotCmp=S.compare;S.compare=false;}
   requestAnimationFrame(frame);
 }
 renderDock();setAnimal('human');
