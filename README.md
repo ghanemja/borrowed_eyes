@@ -1,6 +1,6 @@
 # Borrowed Eyes
 
-A browser game about how other animals see. You start in a 3D valley with human eyes. Fourteen animals are hidden around it, and when you find one and hold it in your crosshair, you get to see the world through its eyes. Some animals only come out at night, so the eyes you collect early help you find the rest.
+A browser game about how other animals see. You start in a 3D valley with human eyes. Fourteen animals are hidden around it, and when you find one and photograph it, you get to see the world through its eyes. Some animals only come out at night, so the eyes you collect early help you find the rest.
 
 ![Gameplay](docs/gameplay.jpg)
 
