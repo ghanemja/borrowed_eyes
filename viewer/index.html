@@ -1,0 +1,882 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Borrowed Eyes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gloock&family=Familjen+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+
+body{margin:0}
+:root{
+  --bg:#edf0ed; --surface:#ffffff; --ink:#131a17; --muted:#56635d; --line:#d3dad6;
+  --accent:#0b6a64; --accent-soft:rgba(11,106,100,.16); --accent-ink:#ffffff; --chip:#e1e7e3;
+  --stage:#090d0c;
+  --display:'Gloock', 'Georgia', serif;
+  --body:'Familjen Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono:'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0d1211; --surface:#141b19; --ink:#e4ebe8; --muted:#93a29c; --line:#25302d;
+    --accent:#56c3b7; --accent-soft:rgba(86,195,183,.18); --accent-ink:#04201d; --chip:#1b2422;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0d1211; --surface:#141b19; --ink:#e4ebe8; --muted:#93a29c; --line:#25302d;
+  --accent:#56c3b7; --accent-soft:rgba(86,195,183,.18); --accent-ink:#04201d; --chip:#1b2422;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--body);}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app{max-width:1340px;margin:0 auto;padding-inline:20px;padding-block:22px 44px;display:flex;flex-direction:column;gap:20px}
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px}
+.brand h1{font:400 44px/1 var(--display);margin:0;letter-spacing:-.01em;text-wrap:balance}
+.brand p{margin:8px 0 0;color:var(--muted);max-width:60ch}
+.scenes{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.scenes .lbl{font:500 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-right:4px}
+.seg{border:1px solid var(--line);background:var(--surface);padding:7px 12px;border-radius:999px;cursor:pointer;font-weight:500}
+.seg[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.seg.upload{border-style:dashed}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 350px;gap:24px;align-items:start}
+@media (max-width:940px){.layout{grid-template-columns:minmax(0,1fr)}}
+.viewer{display:flex;flex-direction:column;gap:14px;min-width:0}
+.stage{position:relative;aspect-ratio:16/9;max-width:100%;background:var(--stage);border-radius:10px;overflow:hidden;touch-action:pan-y;cursor:grab;user-select:none;-webkit-user-select:none}
+.stage.dragging{cursor:grabbing}
+.stage canvas{display:block;width:100%;height:100%}
+.tag{position:absolute;top:10px;font:500 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:#e9f0ed;background:rgba(8,12,11,.62);padding:6px 8px;border-radius:4px;pointer-events:none}
+.tag.l{left:10px}.tag.r{right:10px}
+.split{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:rgba(255,255,255,.85);cursor:ew-resize;touch-action:none}
+.split::before{content:"";position:absolute;inset:0 -14px}
+.knob{position:absolute;top:50%;left:50%;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;background:#f4f7f5;box-shadow:0 2px 10px rgba(0,0,0,.35);display:grid;place-items:center}
+.knob svg{width:18px;height:18px}
+.hud{position:absolute;left:10px;bottom:10px;display:flex;flex-wrap:wrap;gap:6px;pointer-events:none}
+.pill{font:500 11px/1 var(--mono);color:#e9f0ed;background:rgba(8,12,11,.62);padding:6px 8px;border-radius:4px}
+.drag-hint{position:absolute;right:10px;bottom:10px;pointer-events:none;transition:opacity .4s}
+.busy{position:absolute;inset:0;display:grid;place-items:center;background:rgba(8,12,11,.55);color:#e9f0ed;font:500 13px var(--mono)}
+.nogl{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:#e9f0ed}
+.ruler{display:flex;flex-direction:column;gap:6px}
+.track{position:relative;height:22px;border-radius:4px;background:var(--chip);overflow:hidden}
+.seg-fov,.seg-bino,.seg-human{position:absolute;top:0;bottom:0}
+.seg-fov{background:var(--accent-soft)}
+.seg-bino{background:var(--accent);opacity:.75}
+.seg-human{border:1.5px dashed var(--ink);border-radius:3px;opacity:.55}
+.ticks{position:relative;height:14px;font:400 10.5px/1 var(--mono);color:var(--muted)}
+.ticks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.ticks span:first-child{transform:none}.ticks span:last-child{transform:translateX(-100%)}
+.ruler-cap{font-size:13px;color:var(--muted)}
+.ruler-cap b{color:var(--ink);font-weight:600}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+.toggle{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);padding:7px 12px 7px 8px;border-radius:999px;cursor:pointer;font-weight:500}
+.toggle .sw{width:30px;height:18px;border-radius:9px;background:var(--chip);position:relative;transition:background .2s}
+.toggle .sw::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--muted);transition:transform .2s,background .2s}
+.toggle[aria-pressed="true"] .sw{background:var(--accent)}
+.toggle[aria-pressed="true"] .sw::after{transform:translateX(12px);background:var(--accent-ink)}
+.keyline{font-size:13px;color:var(--muted);flex:1;min-width:220px}
+h3.sec{font:500 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:6px 0 10px}
+.finds{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+.find{text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:10px 12px;cursor:pointer;display:flex;flex-direction:column;gap:3px}
+.find:hover{border-color:var(--accent)}
+.find b{font-weight:600}
+.find .try{font:500 11px/1.3 var(--mono);color:var(--accent)}
+.find .why{font-size:13px;color:var(--muted)}
+.panel{display:flex;flex-direction:column;gap:16px;min-width:0}
+.animals{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.ani{text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:9px 10px;cursor:pointer;display:flex;flex-direction:column;gap:6px}
+.ani:hover{border-color:var(--muted)}
+.ani[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.ani .nm{font-weight:600;line-height:1.1}
+.ani .row{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.dots{display:flex;gap:3px}
+.dots i{width:9px;height:9px;border-radius:50%;display:block}
+.ani .fv{font:400 10.5px/1 var(--mono);color:var(--muted)}
+.info{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:14px}
+.info h2{font:400 30px/1 var(--display);margin:0}
+.info .latin{font-style:italic;color:var(--muted);margin:4px 0 0}
+.stats{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0;font-size:13.5px}
+.stats dt{color:var(--muted)}
+.stats dd{margin:0;font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums}
+.chart svg{width:100%;height:auto;display:block}
+.chart .cap{font-size:12px;color:var(--muted);margin-top:4px}
+.facts{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:8px}
+.facts li{max-width:65ch}
+.key{font-size:13px;border-left:3px solid var(--accent);padding-left:10px;color:var(--ink)}
+.foot{font-size:13px;color:var(--muted);max-width:75ch}
+@media (max-width:520px){.brand h1{font-size:34px}.animals{grid-template-columns:1fr 1fr}}
+@media (prefers-reduced-motion:reduce){.toggle .sw::after,.drag-hint{transition:none}}
+</style>
+
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <h1>Borrowed Eyes</h1>
+      <p>One scene, eight sets of eyes. Pick an animal to see what its eyes can pick up, then drag the view to look around.</p>
+    </div>
+    <div class="scenes" id="scenes">
+      <span class="lbl">Scene</span>
+      <button class="seg" data-scene="meadow" aria-pressed="true">Meadow at noon</button>
+      <button class="seg" data-scene="yard" aria-pressed="false">Backyard</button>
+      <button class="seg" data-scene="night" aria-pressed="false">Forest at night</button>
+      <label class="seg upload" for="photo" id="photoLbl">Your photo</label>
+      <input type="file" id="photo" accept="image/*" hidden>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="viewer">
+      <div class="stage" id="stage" tabindex="0" aria-label="Scene viewer. Drag or use arrow keys to look around.">
+        <canvas id="gl"></canvas>
+        <div class="tag l" id="tagL">You</div>
+        <div class="tag r" id="tagR">Honeybee</div>
+        <div class="split" id="split" role="slider" aria-label="Comparison divider" tabindex="0"><div class="knob"><svg viewBox="0 0 24 24" fill="none" stroke="#1a2320" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l-6 6 6 6M15 6l6 6-6 6"/></svg></div></div>
+        <div class="hud" id="hud"></div>
+        <div class="pill drag-hint" id="dragHint">Drag to look around</div>
+        <div class="busy" id="busy" hidden>Painting scene</div>
+      </div>
+
+      <div class="ruler" id="ruler">
+        <div class="track" id="track">
+          <div class="seg-fov" id="rFov"></div>
+          <div class="seg-bino" id="rBino"></div>
+          <div class="seg-human" id="rHuman"></div>
+        </div>
+        <div class="ticks"><span style="left:0">behind</span><span style="left:25%">left</span><span style="left:50%">ahead</span><span style="left:75%">right</span><span style="left:100%">behind</span></div>
+        <div class="ruler-cap" id="rulerCap"></div>
+      </div>
+
+      <div class="toolbar">
+        <button class="toggle" id="compare" aria-pressed="true"><span class="sw"></span>Compare with human</button>
+        <div class="keyline" id="keyline"></div>
+      </div>
+
+      <div>
+        <h3 class="sec" id="findsTitle">Things to find in this scene</h3>
+        <div class="finds" id="finds"></div>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <div>
+        <h3 class="sec">Whose eyes</h3>
+        <div class="animals" id="animals"></div>
+      </div>
+      <article class="info" id="info"></article>
+    </aside>
+  </main>
+
+  <p class="foot">These views are approximations built from published measurements of each animal's color receptors, sharpness, field of view and flicker rate. Figures are rounded and vary between individuals and studies. Nobody can know what an animal experiences; this shows the information its eyes can gather. Bee and fly colors use the standard false-color convention, since ultraviolet has no color of its own on a screen.</p>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = s => document.querySelector(s);
+const PW = 3072, PH = 960;
+
+/* ---------- animal data ---------- */
+const ID  = [1,0,0, 0,1,0, 0,0,1];
+const DEU = [.29275,.70725,0, .29275,.70725,0, -.02234,.02234,1];
+const BEE = [.18,.78,.04, .03,.22,.75, 0,0,0];
+const FLY = [.15,.7,.15, .05,.35,.6, 0,.05,.1];
+const SNK = [.35,.6,.05, .35,.6,.05, .05,.1,.2];
+
+const ANIMALS = [
+  {id:'human', name:'Human', latin:'Homo sapiens', fov:200, bino:120, blur:0, sat:1, sens:1, M:ID, uvW:[0,0,0], time:1,
+   peaks:[420,534,564], rec:'3 cone types', acuity:'~60 cycles/°', flick:'~60 Hz',
+   key:'Your own view, the reference everything else is compared to.',
+   facts:['Three cone types, peaking near 420, 534 and 564 nm, set the color range that this whole site is measured against.',
+          'Your sharpest vision comes from the fovea, a pinhead-sized pit at the center of the retina.',
+          'Forward-facing eyes mean about 120° of your view is seen by both eyes at once, which is what gives you strong depth perception.']},
+  {id:'dog', name:'Dog', latin:'Canis familiaris', fov:250, bino:60, blur:1.4, sat:.9, sens:2.5, M:DEU, uvW:[0,0,0], time:.8,
+   peaks:[429,555], rec:'2 cone types', acuity:'~12 cycles/°', flick:'~75 Hz',
+   key:'Reds and greens merge into muddy yellows. Blues stay clear.',
+   facts:['Dogs have two cone types instead of three. Red, orange and green fall into similar yellowish tones, while blue stays distinct. A red ball on a green lawn is surprisingly hard for them to spot.',
+          'Detail is roughly a fifth of yours, so things at a distance look soft.',
+          'More rods and a reflective layer behind the retina (the tapetum lucidum) make dim light far easier to work with.']},
+  {id:'cat', name:'Cat', latin:'Felis catus', fov:200, bino:140, blur:1.9, sat:.55, sens:4, M:DEU, uvW:[0,0,0], time:1,
+   peaks:[450,556], rec:'2 main cone types', acuity:'~6 to 10 cycles/°', flick:'~55 to 70 Hz',
+   key:'Muted color and soft detail, but dim scenes stay readable.',
+   facts:['Cats are built for dusk. They can see in light roughly six times dimmer than we need.',
+          'Color is faint. They mostly separate blues from yellows, and reds read as dull grey-green.',
+          'Their sharpness is well below ours, and they struggle to focus on anything right under their nose.']},
+  {id:'horse', name:'Horse', latin:'Equus caballus', fov:350, bino:65, blur:.8, sat:.85, sens:2, M:DEU, uvW:[0,0,0], time:.9, blind:1,
+   peaks:[428,539], rec:'2 cone types', acuity:'~23 cycles/°', flick:'~70 Hz',
+   key:'Dark wedge at the center bottom: the blind spot in front of the nose.',
+   facts:['Eyes on the sides of the head give a nearly all-around view of about 350°, useful for an animal that needs to notice predators early.',
+          'Two blind spots remain: directly behind, and a narrow zone in front of and below the nose.',
+          'With two cone types, red and green are hard to tell apart, much like a dog.']},
+  {id:'bee', name:'Honeybee', latin:'Apis mellifera', fov:320, bino:null, facet:1.7, sat:1.1, sens:.5, M:BEE, uvW:[0,0,1], time:.3,
+   peaks:[344,436,556], rec:'3 types (UV, blue, green)', acuity:'~0.3 cycles/°', flick:'~200 Hz',
+   key:'False color: ultraviolet shown as blue, blue as green, green as red.',
+   facts:['Bees trade red for ultraviolet. Their receptors peak near 344 nm (UV), 436 nm (blue) and 556 nm (green).',
+          'Many flowers carry UV patterns called nectar guides that point toward the center. Scarlet flowers with no UV look nearly black to a bee, which is partly why hummingbirds, not bees, pollinate them.',
+          'Each eye is a mosaic of about 5,000 facets, so the image is coarse. Bees register flicker up to about 200 times a second, so our world moves slowly for them.']},
+  {id:'fly', name:'Housefly', latin:'Musca domestica', fov:340, bino:null, facet:2.7, sat:.6, sens:.7, M:FLY, uvW:[.05,.1,.55], time:.25,
+   peaks:[335,355,440,490,530], rec:'5 receptor types', acuity:'~0.2 cycles/°', flick:'~250 Hz',
+   key:'Big facets, almost all-around view, and time running four times slower.',
+   facts:['Around 3,000 facets per eye make the picture very coarse but cover almost the entire sphere around the fly.',
+          'Fly photoreceptors respond about four times faster than ours, so a hand swinging toward them looks like slow motion. That is why swatting one is hard.',
+          'Their receptors reach well into ultraviolet.']},
+  {id:'eagle', name:'Golden eagle', latin:'Aquila chrysaetos', fov:260, bino:20, blur:0, sharpen:.9, sat:1.3, sens:.9, M:ID, uvW:[.08,0,.12], fovea:2.5, time:.6,
+   peaks:[405,455,505,565], rec:'4 cone types', acuity:'~140 cycles/°', flick:'~100 Hz',
+   key:'Center circle: the deep fovea, magnifying about 2.5×. Try it on the hawk.',
+   facts:['Eagles resolve detail at roughly two to two and a half times the distance we can.',
+          'A deep, steep-walled fovea at the center of each eye acts like a built-in telephoto lens.',
+          'Four cone types plus colored oil droplets in each cone make colors more saturated and extend sensitivity into violet.']},
+  {id:'snake', name:'Rattlesnake', latin:'Crotalus', fov:190, bino:null, blur:1.6, sat:.45, sens:1, M:SNK, uvW:[0,0,.3], heat:1, heatBlur:1.3, time:1,
+   peaks:[360,550], ir:true, rec:'2 cone types + heat pits', acuity:'Low (not well measured)', flick:'Not well measured',
+   key:'Heat shown as a glow from purple (cool) through orange to yellow (warm).',
+   facts:['Pit organs between the eye and nostril sense infrared heat, letting a rattlesnake find warm prey in total darkness.',
+          'The heat signal and normal vision are merged in the same brain region, the optic tectum, so the snake likely sees them as one picture.',
+          'The heat image is blurry, but a mouse or a person stands out sharply against cool ground.']},
+];
+const byId = Object.fromEntries(ANIMALS.map(a => [a.id, a]));
+
+const SCENES = {
+  meadow:{name:'Meadow at noon', light:10, finds:[
+    {t:'A rabbit frozen in the grass', a:'snake', u:.61, why:'Its body heat gives it away.'},
+    {t:'A hawk circling overhead', a:'eagle', u:.53, why:'The deep fovea zooms right in.'},
+    {t:'Bullseyes on the yellow flowers', a:'bee', u:.42, why:'UV nectar guides point to the center.'},
+    {t:'Red flowers that disappear', a:'bee', u:.545, why:'Scarlet salvia goes dark. Poppies reflect UV and stay bright.'},
+    {t:'A fox behind you', a:'horse', u:.5, why:'Look at the far left edge. No head turn needed.'},
+  ]},
+  yard:{name:'Backyard', light:10, finds:[
+    {t:'Red ball versus blue ball', a:'dog', u:.515, why:'The red one sinks into the lawn. The blue one pops.'},
+    {t:'Apples hiding in the tree', a:'horse', u:.4, why:'Red fruit blends into green leaves.'},
+    {t:'The white fence', a:'bee', u:.3, why:'White paint absorbs UV, so to a bee it is not white at all.'},
+    {t:'Squirrel on the fence', a:'fly', u:.36, why:'At a fly’s flicker rate it runs in slow motion.'},
+    {t:'A sun-warmed patio', a:'snake', u:.79, why:'Stone holds heat, and so does the person on it.'},
+  ]},
+  night:{name:'Forest at night', light:.25, finds:[
+    {t:'A deer between the trees', a:'cat', u:.45, why:'Cats need about a sixth of the light we do.'},
+    {t:'An owl on a branch', a:'snake', u:.3, why:'Its face is warmer than the bark.'},
+    {t:'A mouse on the forest floor', a:'snake', u:.535, why:'Tiny, but hot against cold ground.'},
+    {t:'A fox off to the side', a:'dog', u:.5, why:'Watch the right edge. Wider eyes catch it.'},
+    {t:'Fireflies in slow motion', a:'fly', u:.5, why:'Each flash stretches out at 250 Hz.'},
+  ]},
+  photo:{name:'Your photo', light:10, finds:[]},
+};
+
+/* ---------- painting helpers ---------- */
+function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function gray(v){let a=1;if(Array.isArray(v)){a=v[1];v=v[0];}const c=Math.round(Math.max(0,Math.min(1,v))*255);return `rgba(${c},${c},${c},${a})`;}
+const TAU = Math.PI*2;
+class Layers{
+  constructor(w,h){this.w=w;this.h=h;this.cv=[0,1,2,3].map(()=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c;});this.x=this.cv.map(c=>c.getContext('2d',{willReadFrequently:true}));}
+  clear(){this.x.forEach(c=>{c.globalAlpha=1;c.clearRect(0,0,this.w,this.h);});}
+  paint(i,v,o){
+    const c=this.x[i];
+    if(Array.isArray(v)&&Array.isArray(v[0])){
+      const g=o.r1!=null?c.createRadialGradient(o.cx,o.cy,o.r0||0,o.cx,o.cy,o.r1):c.createLinearGradient(o.x0||0,o.y0||0,o.x1||0,o.y1||0);
+      for(const [t,val] of v) g.addColorStop(t,i===0?val:gray(val));
+      return g;
+    }
+    return i===0?v:gray(v);
+  }
+  vals(rgb,uv,heat,o){return [rgb,uv,heat,('glow' in o)?o.glow:0];}
+  fill(p,rgb,uv,heat,o={}){const v=this.vals(rgb,uv,heat,o);for(let i=0;i<4;i++){if(v[i]==null)continue;const c=this.x[i];c.globalAlpha=o.a??1;c.fillStyle=this.paint(i,v[i],o);c.fill(p);}}
+  stroke(p,rgb,uv,heat,lw,o={}){const v=this.vals(rgb,uv,heat,o);for(let i=0;i<4;i++){if(v[i]==null)continue;const c=this.x[i];c.globalAlpha=o.a??1;c.lineWidth=lw;c.lineCap='round';c.lineJoin='round';c.strokeStyle=this.paint(i,v[i],o);c.stroke(p);}}
+}
+const circ=(x,y,r)=>{const p=new Path2D();p.arc(x,y,Math.max(r,.1),0,TAU);return p;};
+const ell=(x,y,rx,ry,rot=0)=>{const p=new Path2D();p.ellipse(x,y,Math.max(rx,.1),Math.max(ry,.1),rot,0,TAU);return p;};
+const rect=(x,y,w,h)=>{const p=new Path2D();p.rect(x,y,w,h);return p;};
+const line=(pts)=>{const p=new Path2D();p.moveTo(pts[0],pts[1]);for(let i=2;i<pts.length;i+=2)p.lineTo(pts[i],pts[i+1]);return p;};
+const poly=(pts)=>{const p=line(pts);p.closePath();return p;};
+function wrap(x,r,fn){fn(x);if(x-r<0)fn(x+PW);if(x+r>PW)fn(x-PW);}
+function ridge(base,terms,bottom){const p=new Path2D();p.moveTo(0,bottom);for(let x=0;x<=PW;x+=6){let y=base;for(const [a,k,ph] of terms)y+=a*Math.sin(x/PW*TAU*k+ph);p.lineTo(x,y);}p.lineTo(PW,bottom);p.closePath();return p;}
+function gauss(R){return (R()+R()+R()-1.5)/1.5;}
+
+function clouds(L,R,n,y0,y1,col,uv,heat,a=.9){
+  for(let i=0;i<n;i++){
+    const cx=R()*PW, cy=y0+R()*(y1-y0), s=26+R()*46, puffs=[];
+    for(let k=0;k<8;k++)puffs.push([(k-3.5)*s*.5+(R()-.5)*s*.4,(R()-.5)*s*.3-Math.sin(k/7*Math.PI)*s*.4,s*(.42+R()*.35)]);
+    wrap(cx,s*3,X=>{const p=new Path2D();for(const [dx,dy,r] of puffs){p.moveTo(X+dx+r,cy+dy);p.arc(X+dx,cy+dy,r,0,TAU);}L.fill(p,col,uv,heat,{a});});
+  }
+}
+function blade(L,x,y,h,w,bend,col,uv,heat){
+  wrap(x,40,X=>{const p=new Path2D();p.moveTo(X,y);p.quadraticCurveTo(X+bend*.25,y-h*.6,X+bend,y-h);L.stroke(p,col,uv,heat,w);});
+}
+function grassItems(L,R,items,n,hz,opts={}){
+  const hue=opts.hue??78, lig=opts.lig??24;
+  for(let i=0;i<n;i++){
+    const y=hz+Math.pow(R(),.85)*(PH-hz+30), t=Math.min(1,(y-hz)/(PH-hz));
+    const x=R()*PW, h=(4+t*70)*(.6+R()*.6), w=.7+t*3.2, bend=(R()-.5)*h*.6;
+    const col=`hsl(${hue+R()*32},${38+R()*22}%,${lig+R()*18+(1-t)*14}%)`;
+    const uv=.03+R()*.05, heat=(opts.heat??.39)+R()*.07;
+    items.push({y,d:()=>blade(L,x,y,h,w,bend,col,uv,heat)});
+  }
+}
+
+/* flowers */
+const FL={
+  susan:{c:'#f3c21a',uv:.8},poppy:{c:'#d8261c',uv:.5},salvia:{c:'#df1422',uv:.02},daisy:{c:'#f6f4ec',uv:.08},corn:{c:'#3a5ad8',uv:.4}
+};
+function flower(L,type,x,y,s){
+  const f=FL[type];
+  if(s<3.2){L.fill(circ(x,y-s*1.6,s*.9),f.c,f.uv,.42);return;}
+  const stem=s*(type==='salvia'?1.2:2.4), hx=x+s*.15, hy=y-stem;
+  L.stroke(line([x,y,hx,hy]),'#3f7a2a',.04,.4,Math.max(1,s*.14));
+  if(type==='susan'){
+    for(let k=0;k<12;k++){const a=k/12*TAU;L.fill(ell(hx+Math.cos(a)*s*.75,hy+Math.sin(a)*s*.75*.8,s*.55,s*.2,a),f.c,f.uv,.42);}
+    L.fill(circ(hx,hy,s*.66),null,.03,null,{glow:null});
+    L.fill(circ(hx,hy,s*.34),'#3b2412',.03,.44);
+  }else if(type==='poppy'){
+    for(let k=0;k<5;k++){const a=k/5*TAU+.3;L.fill(circ(hx+Math.cos(a)*s*.42,hy+Math.sin(a)*s*.36,s*.52),f.c,f.uv,.42);}
+    L.fill(circ(hx,hy,s*.2),'#231a14',.08,.43);
+  }else if(type==='salvia'){
+    for(let k=0;k<7;k++){const yy=hy-k*s*.42;L.fill(ell(hx+(k%2?s*.18:-s*.18),yy,s*.2,s*.34,k%2?.5:-.5),f.c,f.uv,.42);}
+  }else if(type==='daisy'){
+    for(let k=0;k<14;k++){const a=k/14*TAU;L.fill(ell(hx+Math.cos(a)*s*.6,hy+Math.sin(a)*s*.6*.8,s*.45,s*.14,a),f.c,f.uv,.42);}
+    L.fill(circ(hx,hy,s*.26),'#efbf17',.12,.43);
+  }else if(type==='corn'){
+    for(let k=0;k<9;k++){const a=k/9*TAU;L.fill(poly([hx,hy,hx+Math.cos(a-.25)*s*.8,hy+Math.sin(a-.25)*s*.65,hx+Math.cos(a+.25)*s*.8,hy+Math.sin(a+.25)*s*.65]),f.c,f.uv,.42);}
+    L.fill(circ(hx,hy,s*.2),'#262a70',.3,.42);
+  }
+}
+
+/* creatures painted into the panorama */
+function rabbit(L,x,y,s){
+  L.fill(ell(x,y-14*s,22*s,14*s),'#8a7556',.06,.88);
+  L.fill(circ(x-21*s,y-16*s,5*s),'#b7a78c',.07,.8);
+  L.fill(ell(x+15*s,y-44*s,3.6*s,12*s,-.15),'#7f6a4d',.06,.8);
+  L.fill(ell(x+21*s,y-43*s,3.6*s,12*s,.25),'#7f6a4d',.06,.8);
+  L.fill(ell(x+18*s,y-26*s,10*s,9*s),'#8a7556',.06,.9);
+  L.fill(circ(x+22*s,y-28*s,1.6*s),'#1b130c',.02,.85);
+}
+function fox(L,x,y,s,night){
+  const body=night?'#5e3519':'#c2622b', dark=night?'#20150e':'#3a2418', tip=night?'#8a8578':'#f2eee4';
+  for(const lx of [-22,-12,16,26])L.stroke(line([x+lx*s,y-18*s,x+lx*s+2*s,y]),dark,.03,.8,4.5*s);
+  L.fill(ell(x-46*s,y-22*s,24*s,8.5*s,-.25),body,.05,.72);
+  L.fill(ell(x-66*s,y-17*s,7*s,5.5*s,-.25),tip,.1,.6);
+  L.fill(ell(x,y-24*s,34*s,13*s),body,.05,.87);
+  L.fill(poly([x+28*s,y-38*s,x+32*s,y-54*s,x+38*s,y-40*s]),body,.05,.8);
+  L.fill(poly([x+36*s,y-39*s,x+42*s,y-54*s,x+46*s,y-38*s]),body,.05,.8);
+  L.fill(ell(x+36*s,y-32*s,12*s,9*s),body,.05,.9);
+  L.fill(ell(x+48*s,y-29*s,9*s,4.5*s,.15),tip,.08,.88);
+  L.fill(circ(x+56*s,y-29*s,1.8*s),'#111',.02,.85);
+}
+function deer(L,x,y,s){
+  const c='#6b563f', legs='#4f3f2e';
+  for(const [lx,ly] of [[-42,-95],[-30,-95],[34,-98],[46,-98]])L.stroke(line([x+lx*s,y+ly*s,x+(lx+2)*s,y]),legs,.03,.8,6*s);
+  L.fill(ell(x,y-112*s,62*s,27*s),c,.04,.86);
+  L.fill(ell(x-4*s,y-98*s,40*s,11*s),'#86725a',.05,.84);
+  L.stroke(line([x+44*s,y-122*s,x+64*s,y-168*s]),c,.04,.86,18*s);
+  L.fill(ell(x+74*s,y-174*s,17*s,9*s,.35),c,.04,.88);
+  L.fill(ell(x+60*s,y-190*s,9*s,4*s,-.7),c,.04,.8);
+  L.stroke(line([x+66*s,y-188*s,x+62*s,y-222*s,x+50*s,y-238*s]),'#8b7a63',.05,.3,3*s);
+  L.stroke(line([x+63*s,y-212*s,x+76*s,y-230*s]),'#8b7a63',.05,.3,3*s);
+  L.stroke(line([x+72*s,y-186*s,x+80*s,y-220*s,x+94*s,y-232*s]),'#8b7a63',.05,.3,3*s);
+  L.fill(ell(x-60*s,y-120*s,8*s,5*s,.4),'#9b8a74',.05,.75);
+}
+function owl(L,x,y,s){
+  L.fill(ell(x,y,17*s,25*s),'#54473a',.04,.78);
+  L.fill(poly([x-12*s,y-34*s,x-9*s,y-50*s,x-3*s,y-38*s]),'#54473a',.04,.74);
+  L.fill(poly([x+12*s,y-34*s,x+9*s,y-50*s,x+3*s,y-38*s]),'#54473a',.04,.74);
+  L.fill(circ(x,y-27*s,14*s),'#54473a',.04,.84);
+  L.fill(ell(x,y-26*s,11*s,10*s),'#7b6a55',.05,.87);
+  L.fill(circ(x-5*s,y-28*s,3*s),'#c99f35',.04,.86);
+  L.fill(circ(x+5*s,y-28*s,3*s),'#c99f35',.04,.86);
+  L.fill(poly([x-2*s,y-23*s,x+2*s,y-23*s,x,y-18*s]),'#2a241c',.03,.8);
+}
+function mouse(L,x,y,s){
+  L.stroke(new Path2D(`M${x-9*s} ${y-4*s} Q ${x-20*s} ${y-2*s} ${x-24*s} ${y-8*s}`),'#5a4c42',.03,.7,1.2*s);
+  L.fill(ell(x,y-5*s,9*s,5.5*s),'#5a4c42',.04,.84);
+  L.fill(circ(x+8*s,y-6.5*s,4*s),'#5a4c42',.04,.85);
+  L.fill(circ(x+6*s,y-10.5*s,2.6*s),'#6a5a50',.04,.8);
+}
+function person(L,x,y){
+  const skin='#c48a60';
+  L.fill(ell(x-15,y-4,16,7),'#262626',.05,.6);L.fill(ell(x+15,y-4,16,7),'#262626',.05,.6);
+  L.fill(rect(x-27,y-205,24,200),'#2e4068',.2,.74);L.fill(rect(x+3,y-205,24,200),'#2e4068',.2,.74);
+  L.stroke(line([x-44,y-330,x-54,y-230]),skin,.12,.92,15);
+  L.stroke(line([x+44,y-330,x+52,y-232]),skin,.12,.92,15);
+  const t=new Path2D();t.roundRect(x-42,y-365,84,172,16);L.fill(t,'#1c8a84',.09,.8);
+  L.stroke(line([x-42,y-352,x-47,y-300]),'#1c8a84',.09,.8,24);
+  L.stroke(line([x+42,y-352,x+47,y-300]),'#1c8a84',.09,.8,24);
+  L.fill(rect(x-9,y-385,18,24),skin,.12,.95);
+  L.fill(ell(x,y-405,25,31),skin,.12,.96);
+  L.fill(ell(x,y-420,27,20),'#2a1d15',.03,.82);
+}
+
+/* ---------- scenes ---------- */
+function paintMeadow(L){
+  const R=rng(7), hz=500;
+  L.fill(rect(0,0,PW,hz+40),[[0,'#2d6cc2'],[.6,'#79ade3'],[1,'#d4e6f2']],[[0,.55],[1,.85]],[[0,.03],[1,.12]],{y0:0,y1:hz});
+  const sx=PW*.34, sy=150;
+  L.fill(circ(sx,sy,280),[[0,'rgba(255,250,228,.8)'],[.25,'rgba(255,250,228,.28)'],[1,'rgba(255,250,228,0)']],[[0,[1,.4]],[1,[1,0]]],null,{cx:sx,cy:sy,r1:280,glow:null});
+  L.fill(circ(sx,sy,30),'#fffdf2',1,.95,{glow:1});
+  clouds(L,R,10,70,300,'#ffffff',.85,.07);
+  L.fill(ridge(452,[[18,3,1],[10,7,2],[6,13,.5]],hz+40),'#93abba',.5,.3);
+  L.fill(ridge(476,[[14,4,2.2],[8,9,1],[5,17,3]],hz+60),'#7a9b77',.3,.36);
+  const tx=PW*.23, ty=478;
+  L.fill(rect(tx-8,ty-90,16,92),'#4b3a2a',.04,.4);
+  for(const [dx,dy,r] of [[0,-120,52],[-40,-100,40],[42,-98,42],[-20,-150,38],[24,-148,36],[0,-80,40]])L.fill(circ(tx+dx,ty+dy,r),'#3f6a33',.05,.36);
+  L.fill(rect(0,hz-6,PW,PH-hz+6),[[0,'#9cb95d'],[.35,'#6f9a3c'],[1,'#3d6a24']],.06,[[0,.4],[1,.47]],{y0:hz,y1:PH});
+  const items=[];
+  grassItems(L,R,items,6500,hz);
+  const patches=[['susan',.42,46],['susan',.585,36],['susan',.3,26],['susan',.71,26],['susan',.15,20],['poppy',.47,32],['poppy',.635,38],['poppy',.36,26],['poppy',.85,20],['salvia',.545,20],['salvia',.395,16],['daisy',.45,30],['daisy',.665,30],['daisy',.27,26],['daisy',.52,26],['daisy',.08,20],['corn',.6,26],['corn',.38,26],['corn',.5,18],['corn',.93,18]];
+  const types=Object.keys(FL);
+  for(const [type,u,n] of patches){
+    for(let i=0;i<n;i++){
+      const y=hz+14+Math.pow(R(),.9)*(PH-hz), t=(y-hz)/(PH-hz), x=u*PW+gauss(R)*(50+t*260), s=1.4+Math.pow(t,1.4)*22;
+      items.push({y,d:()=>wrap(x,40,X=>flower(L,type,X,y,s))});
+    }
+  }
+  for(let i=0;i<260;i++){const type=types[Math.floor(R()*types.length)], y=hz+10+R()*(PH-hz), t=(y-hz)/(PH-hz), x=R()*PW, s=1.4+Math.pow(t,1.4)*22;items.push({y,d:()=>wrap(x,40,X=>flower(L,type,X,y,s))});}
+  const rx=PW*.61, ry=hz+178;
+  items.push({y:ry,d:()=>rabbit(L,rx,ry,1.1)});
+  for(let i=0;i<150;i++){const x=rx+(R()-.5)*120, y=ry+1+R()*26, h=26+R()*30, bend=(R()-.5)*18;items.push({y,d:()=>blade(L,x,y,h,1.6,bend,`hsl(${84+R()*26},${40+R()*18}%,${30+R()*14}%)`,.05,.42)});}
+  const fx=PW*.17, fy=hz+120;
+  items.push({y:fy,d:()=>fox(L,fx,fy,1.05,false)});
+  items.sort((a,b)=>a.y-b.y).forEach(it=>it.d());
+}
+
+function paintYard(L){
+  const R=rng(21), hz=565;
+  L.fill(rect(0,0,PW,hz),[[0,'#3a78c6'],[.7,'#8dbde8'],[1,'#d9eaf4']],[[0,.55],[1,.85]],[[0,.03],[1,.12]],{y0:0,y1:hz});
+  const sx=PW*.9, sy=190;
+  L.fill(circ(sx,sy,260),[[0,'rgba(255,246,220,.75)'],[1,'rgba(255,246,220,0)']],[[0,[1,.4]],[1,[1,0]]],null,{cx:sx,cy:sy,r1:260,glow:null});
+  L.fill(circ(sx,sy,30),'#fffcee',1,.95,{glow:1});
+  clouds(L,R,8,60,240,'#ffffff',.85,.07);
+  L.fill(ridge(345,[[22,5,1],[14,11,2],[9,23,.2]],hz),'#3f6d37',.05,.38);
+  L.fill(ridge(372,[[16,6,2],[10,14,1],[6,29,3]],hz),'#335e2e',.04,.37);
+  // fence
+  const fy0=392, fy1=hz+22;
+  for(let x=0;x<PW;x+=34){
+    const shade=R()*.04;
+    L.fill(poly([x,fy1,x,fy0+10,x+12,fy0-6,x+24,fy0+10,x+24,fy1]),`hsl(45,20%,${93-shade*100}%)`,.05,.5);
+    L.fill(rect(x+20,fy0+12,4,fy1-fy0-12),'#d6d1c4',.04,.46);
+  }
+  L.fill(rect(0,fy0+34,PW,12),'#e6e1d5',.05,.5);L.fill(rect(0,fy1-50,PW,12),'#e6e1d5',.05,.5);
+  // doghouse
+  const dx=PW*.12, dy=hz+80;
+  L.fill(rect(dx-70,dy-110,140,110),'#c49a62',.08,.5);
+  L.fill(poly([dx-88,dy-104,dx,dy-178,dx+88,dy-104]),'#8e2f28',.04,.55);
+  const door=new Path2D();door.moveTo(dx-28,dy);door.lineTo(dx-28,dy-46);door.arc(dx,dy-46,28,Math.PI,0);door.lineTo(dx+28,dy);door.closePath();L.fill(door,'#2b2119',.02,.44);
+  // lawn
+  L.fill(rect(0,hz,PW,PH-hz),[[0,'#86b24c'],[.4,'#679a36'],[1,'#3e7127']],.05,[[0,.44],[1,.48]],{y0:hz,y1:PH});
+  // garden bed
+  const gx=PW*.26, gy=hz+70;
+  L.fill(ell(gx,gy+20,170,34),'#4a3423',.04,.5);
+  for(let i=0;i<7;i++){const px=gx-140+i*46, py=gy+8;L.fill(circ(px,py-30,30),'#3f7d2c',.05,.42);L.fill(circ(px+14,py-46,22),'#4c8c34',.05,.42);
+    for(let k=0;k<3;k++)L.fill(circ(px-14+k*14+R()*6,py-26+R()*20,8),'#d0261e',.03,.44);}
+  // patio
+  const px0=PW*.7, px1=PW*.9;
+  for(let row=0;row<8;row++){
+    const y0=hz+80+row*row*6+row*20, y1=hz+80+(row+1)*(row+1)*6+(row+1)*20, n=6+row;
+    for(let c=0;c<n;c++){const w=(px1-px0)/n;L.fill(rect(px0+c*w+2,y0+2,w-4,y1-y0-4),`hsl(38,${8+R()*6}%,${66+R()*9}%)`,.22,.62+R()*.04);}
+  }
+  const items=[];
+  grassItems(L,R,items,5200,hz,{lig:26,heat:.41});
+  // apple tree (in front of fence)
+  const tx=PW*.4;
+  items.push({y:hz+40,d:()=>{
+    L.fill(poly([tx-22,hz+40,tx-14,hz-160,tx+14,hz-160,tx+22,hz+40]),'#5b4330',.04,.42);
+    const R2=rng(5);
+    for(let i=0;i<22;i++){const a=R2()*TAU, r=R2()*130;L.fill(circ(tx+Math.cos(a)*r*1.2,250+Math.sin(a)*r*.8,50+R2()*40),`hsl(${95+R2()*20},${38+R2()*14}%,${28+R2()*12}%)`,.04,.4);}
+    for(let i=0;i<42;i++){const a=R2()*TAU, r=Math.sqrt(R2())*150;L.fill(circ(tx+Math.cos(a)*r*1.25,250+Math.sin(a)*r*.8,9+R2()*3),'#c41f25',.04,.44);}
+  }});
+  const toy=(x,y,draw)=>items.push({y,d:()=>{L.fill(ell(x+6,y+2,draw.sw,draw.sw*.3),'#1d3a14',.02,.42,{a:.35});draw.f();}});
+  toy(PW*.49,760,{sw:30,f:()=>{L.fill(circ(PW*.49,730,30),'#d7261e',.03,.46);L.fill(circ(PW*.49-9,721,8),'#ee6a5c',.05,.46,{a:.7});}});
+  toy(PW*.545,800,{sw:32,f:()=>{L.fill(circ(PW*.545,768,32),'#2459c9',.28,.46);L.fill(circ(PW*.545-10,758,9),'#6a93e6',.3,.46,{a:.7});}});
+  toy(PW*.455,875,{sw:0,f:()=>{L.fill(ell(PW*.455,868,62,16),'#f07d10',.03,.46);L.fill(ell(PW*.455,864,40,8),'#f59a3e',.04,.46);}});
+  toy(PW*.585,705,{sw:18,f:()=>{L.fill(circ(PW*.585,688,18),'#d5ec2c',.15,.46);L.stroke(new Path2D(`M${PW*.585-14} ${680} Q ${PW*.585} ${694} ${PW*.585+14} ${680}`),'#f4f6ea',.1,.46,2.5);}});
+  items.push({y:900,d:()=>person(L,PW*.795,900)});
+  items.sort((a,b)=>a.y-b.y).forEach(it=>it.d());
+}
+
+function paintNight(L){
+  const R=rng(3), hz=520;
+  L.fill(rect(0,0,PW,hz+20),[[0,'#0a1326'],[1,'#22335a']],.01,[[0,0],[1,.05]],{y0:0,y1:hz});
+  for(let i=0;i<500;i++){const x=R()*PW,y=R()*hz*.92,r=.5+R()*1.3;L.fill(circ(x,y,r),'#ffffff',0,null,{a:.35+R()*.65,glow:.9});}
+  const mx=PW*.61, my=165;
+  L.fill(circ(mx,my,220),[[0,'rgba(200,215,240,.45)'],[1,'rgba(200,215,240,0)']],null,null,{cx:mx,cy:my,r1:220,glow:[[0,[.7,.8]],[1,[.7,0]]]});
+  L.fill(circ(mx,my,34),'#eeecde',.03,.12,{glow:1});
+  for(const [dx,dy,r] of [[-10,-8,8],[9,6,6],[-4,12,4]])L.fill(circ(mx+dx,my+dy,r),'#cfccbc',.03,.12,{glow:1});
+  // conifer skyline
+  const p=new Path2D();p.moveTo(0,hz+30);
+  for(let x=0;x<=PW;x+=22){const h=40+R()*110;p.lineTo(x,hz-10-R()*20);p.lineTo(x+11,hz-10-h);}
+  p.lineTo(PW,hz-20);p.lineTo(PW,hz+30);p.closePath();
+  L.fill(p,'#111b30',0,.2);
+  L.fill(rect(0,hz,PW,PH-hz),[[0,'#25332f'],[1,'#121b18']],0,[[0,.2],[1,.24]],{y0:hz,y1:PH});
+  L.fill(ell(PW*.5,hz+230,700,120),'#34443e',0,.22,{a:.5});
+  // trunks
+  const trunks=[];
+  for(let i=0;i<48;i++){const t=R(), x=R()*PW;trunks.push({t,x});}
+  trunks.sort((a,b)=>a.t-b.t);
+  const deerX=PW*.45, owlX=PW*.3, foxX=PW*.8;
+  const items=[];
+  for(const {t,x} of trunks){
+    if(t>.35 && (Math.abs(x-deerX)<150 || Math.abs(x-PW*.535)<60 || Math.abs(x-foxX)<130))continue;
+    const base=hz+20+t*(PH-hz)*.75, w=8+t*60;
+    items.push({y:base,d:()=>wrap(x,w,X=>{
+      L.fill(poly([X-w/2,base,X-w*.36,-10,X+w*.36,-10,X+w/2,base]),`hsl(30,14%,${10+R()*5}%)`,.01,.23+t*.03);
+      L.fill(poly([X+w*.18,base,X+w*.14,-10,X+w*.36,-10,X+w/2,base]),'#3c4556',.02,.24,{a:.5});
+      if(R()<.5){const by=180+R()*200, dir=R()<.5?-1:1;L.stroke(line([X,by,X+dir*(50+t*120),by-30-R()*40]),'#1a1712',.01,.23,3+t*8);}
+    })});
+  }
+  // owl branch
+  items.push({y:hz+220,d:()=>{
+    L.fill(poly([owlX-22,hz+220,owlX-16,-10,owlX+16,-10,owlX+22,hz+220]),'#1c1813',.01,.24);
+    L.stroke(line([owlX,346,owlX+120,326,owlX+170,312]),'#221d17',.01,.24,10);
+    owl(L,owlX+70,310,1.2);
+  }});
+  items.push({y:700,d:()=>deer(L,deerX,700,1)});
+  items.push({y:842,d:()=>mouse(L,PW*.535,842,1.4)});
+  items.push({y:800,d:()=>fox(L,foxX,800,1.1,true)});
+  for(let i=0;i<260;i++){const x=R()*PW, y=880+R()*110, h=20+R()*60, bend=(R()-.5)*50;items.push({y,d:()=>blade(L,x,y,h,2+R()*3,bend,`hsl(${120+R()*30},${20+R()*14}%,${9+R()*8}%)`,.01,.21)});}
+  items.sort((a,b)=>a.y-b.y).forEach(it=>it.d());
+}
+
+/* sprite atlas: 4 cells of 256px */
+function paintAtlas(L){
+  // 0 butterfly (sulphur, UV-bright forewings)
+  let c=128, y=128;
+  L.fill(ell(c-50,y-22,56,40,.35),'#f2ae0c',.85,.55);L.fill(ell(c+50,y-22,56,40,-.35),'#f2ae0c',.85,.55);
+  L.fill(circ(c-92,y-40,16),'#2a1f14',.02,.5);L.fill(circ(c+92,y-40,16),'#2a1f14',.02,.5);
+  L.fill(ell(c-38,y+30,36,30,-.3),'#e8c43a',.15,.55);L.fill(ell(c+38,y+30,36,30,.3),'#e8c43a',.15,.55);
+  L.fill(ell(c,y,6,42),'#2a2118',.02,.6);
+  L.stroke(line([c-2,y-40,c-16,y-72]),'#2a2118',.02,.5,2.5);L.stroke(line([c+2,y-40,c+16,y-72]),'#2a2118',.02,.5,2.5);
+  // 1 bee
+  c=384;
+  L.fill(ell(c-18,y-36,32,20,.5),'#f4f8ff',.35,.5,{a:.55});L.fill(ell(c+12,y-38,28,18,-.4),'#f4f8ff',.35,.5,{a:.55});
+  L.fill(ell(c,y,36,23),'#d99a1f',.1,.6);
+  for(const dx of [-14,0,14])L.fill(ell(c+dx,y,4.5,21),'#2b1d0e',.03,.6);
+  L.fill(circ(c+38,y-2,13),'#2b1d0e',.03,.62);
+  // 2 hawk from below
+  c=640;
+  L.fill(poly([c,y-10,c-118,y-34,c-126,y-22,c-100,y+4,c-40,y+14,c,y+16,c+40,y+14,c+100,y+4,c+126,y-22,c+118,y-34]),'#7a5634',.1,.62);
+  L.fill(poly([c-100,y+4,c-126,y-22,c-118,y-34,c-96,y-18]),'#3a2718',.05,.55);
+  L.fill(poly([c+100,y+4,c+126,y-22,c+118,y-34,c+96,y-18]),'#3a2718',.05,.55);
+  L.fill(ell(c,y,13,40),'#8a6645',.12,.7);
+  L.fill(poly([c-12,y+32,c+12,y+32,c+22,y+64,c-22,y+64]),'#9a4a2a',.08,.6);
+  L.fill(circ(c,y-38,10),'#6a4a2c',.1,.72);
+  // 3 squirrel, side view facing right
+  c=896;
+  L.fill(ell(c-46,y-14,26,50,.35),'#9d978f',.08,.66);
+  L.fill(ell(c-40,y-52,20,26,.9),'#aaa49c',.08,.64);
+  L.fill(ell(c,y+22,40,24,-.2),'#86817a',.07,.84);
+  L.stroke(line([c+22,y+36,c+34,y+62]),'#6f6a63',.06,.8,8);L.stroke(line([c-18,y+40,c-10,y+62]),'#6f6a63',.06,.8,9);
+  L.fill(circ(c+36,y,17),'#86817a',.07,.88);
+  L.fill(ell(c+32,y-18,5,9,-.3),'#86817a',.07,.8);
+  L.fill(circ(c+44,y-3,2.6),'#111',.02,.85);
+}
+
+function packAux(L,alphaFromRgb){
+  const w=L.w,h=L.h;
+  const u=L.x[1].getImageData(0,0,w,h).data, t=L.x[2].getImageData(0,0,w,h).data, g=L.x[3].getImageData(0,0,w,h).data;
+  const a=alphaFromRgb?L.x[0].getImageData(0,0,w,h).data:null;
+  const out=new ImageData(w,h), o=out.data;
+  for(let i=0;i<o.length;i+=4){o[i]=u[i];o[i+1]=t[i];o[i+2]=g[i];o[i+3]=a?a[i+3]:255;}
+  return out;
+}
+
+/* ---------- animation ---------- */
+const FIRE=(()=>{const R=rng(99);return Array.from({length:26},()=>({u:.28+R()*.5,v:.5+R()*.32,sp:.6+R()*.9,ph:R()*TAU,du:R()*TAU}));})();
+function sprites(scene,T){
+  const s=[];
+  if(scene==='meadow'){
+    [.445,.575,.665].forEach((b,i)=>s.push([b+.03*Math.sin(T*.23+i*2),.6+.06*Math.sin(T*.37+i*1.7),.06,.18+.82*Math.abs(Math.cos(T*7+i)),0]));
+    [.425,.585].forEach((b,i)=>{const ph=T*1.6+i*3;s.push([b+.012*Math.cos(ph),.66+.02*Math.sin(T*2.1+i),.034,(Math.sin(ph)>0?-1:1)*(Math.sin(T*90+i)>0?1:.82),1]);});
+    const a=T*.22;s.push([.53+.045*Math.cos(a),.19+.035*Math.sin(a),.05,.9+.1*Math.sin(T*2.5),2]);
+  }else if(scene==='yard'){
+    const ph=(T*.045)%2, pp=ph<1?ph:2-ph, dir=ph<1?1:-1;
+    s.push([.2+.34*(pp*pp*(3-2*pp)),.395-.012*Math.abs(Math.sin(T*9)),.085,dir,3]);
+    s.push([.3+.02*Math.sin(T*.3),.62+.04*Math.sin(T*.5),.06,.18+.82*Math.abs(Math.cos(T*7)),0]);
+    const b=T*1.7;s.push([.25+.02*Math.cos(b),.64+.02*Math.sin(T*2.3),.034,(Math.sin(b)>0?-1:1)*(Math.sin(T*90)>0?1:.82),1]);
+  }
+  return s;
+}
+function fireflies(scene,T){
+  if(scene!=='night')return[];
+  return FIRE.map(f=>[f.u+.012*Math.sin(T*.25+f.du),f.v+.02*Math.sin(T*.4+f.ph),3.2*Math.pow(Math.max(0,Math.sin(T*f.sp+f.ph)),6),0]);
+}
+
+/* ---------- WebGL ---------- */
+const VS=`#version 300 es
+out vec2 vUV;void main(){vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));vUV=p;gl_Position=vec4(p*2.-1.,0.,1.);}`;
+const FS=`#version 300 es
+precision highp float;
+in vec2 vUV; out vec4 outColor;
+struct P{vec4 a;vec4 b;vec4 c;vec4 d;mat3 M;};
+uniform P uA; uniform P uB;
+uniform sampler2D uPano,uAux,uAtlas,uAtlasAux;
+uniform vec2 uRes,uPanoSize;
+uniform float uYaw,uLight,uTime,uPhoto,uPhotoAspect,uDpr,uMix,uMixMode;
+uniform vec4 uSpr[8]; uniform float uSprIdx[8]; uniform int uSprN;
+uniform vec4 uFly[26]; uniform int uFlyN;
+float hash(vec2 p){vec3 q=fract(vec3(p.xyx)*.1031);q+=dot(q,q.yzx+33.33);return fract((q.x+q.y)*q.z);}
+vec4 hexc(vec2 p){const vec2 r=vec2(1.,1.7320508);vec2 h=r*.5;vec2 a=mod(p,r)-h;vec2 b=mod(p-h,r)-h;vec2 g=dot(a,a)<dot(b,b)?a:b;return vec4(g,p-g);}
+float hexd(vec2 p){p=abs(p);return max(dot(p,vec2(.5,.8660254)),p.x);}
+vec3 iron(float t){t=clamp(t,0.,1.);return clamp(vec3(1.7*t-.4,2.3*t-1.35,.85*sin(t*3.14159)+max(0.,t-.88)*5.),0.,1.);}
+void samplePano(vec2 uv,float lod,out vec3 rgb,out vec3 aux){
+  rgb=textureLod(uPano,uv,lod).rgb; aux=textureLod(uAux,uv,lod).rgb;
+  if(uPhoto>.5)return;
+  for(int i=0;i<8;i++){
+    if(i>=uSprN)break;
+    vec4 s=uSpr[i];
+    vec2 d=vec2(fract(uv.x-s.x+.5)-.5,uv.y-s.y)*uPanoSize;
+    float sz=s.z*uPanoSize.y;
+    vec2 l=vec2(d.x/(sz*s.w),d.y/sz)+.5;
+    if(l.x<0.||l.x>1.||l.y<0.||l.y>1.)continue;
+    vec2 auv=vec2((uSprIdx[i]+clamp(l.x,.004,.996))*.25,l.y);
+    float al=max(0.,lod+log2(256./(sz*max(abs(s.w),.12))));
+    vec4 c=textureLod(uAtlas,auv,al); vec4 x=textureLod(uAtlasAux,auv,al);
+    rgb=rgb*(1.-c.a)+c.rgb; aux.rg=aux.rg*(1.-c.a)+x.rg;
+  }
+  float sc=exp2(lod);
+  for(int i=0;i<26;i++){
+    if(i>=uFlyN)break;
+    vec4 f=uFly[i];
+    vec2 d=vec2(fract(uv.x-f.x+.5)-.5,uv.y-f.y)*uPanoSize;
+    float r2=dot(d,d);
+    float g=f.z*(exp(-r2/(5.+sc*sc*4.))*1.2+exp(-r2/(160.+sc*sc*30.))*.3);
+    rgb+=vec3(.8,1.,.35)*g; aux.b=max(aux.b,min(g*2.,1.));
+  }
+}
+vec3 shade(P p,vec2 s){
+  vec2 px=s*uRes; float fov=p.a.x;
+  float zoom=1.,ring=0.;
+  if(p.c.x>1.){vec2 ctr=uRes*.5;float R=uRes.y*.19;float d=length(px-ctr);ring=smoothstep(1.6*uDpr,0.,abs(d-R));if(d<R){zoom=p.c.x;px=ctr+(px-ctr)/zoom;}}
+  float facet=1.,cell=0.;
+  if(p.b.y>0.){cell=max(uRes.x*p.b.y/fov,6.*uDpr);vec4 h=hexc(px/cell);px=h.zw*cell;float hd=hexd(h.xy);facet=mix(.28,1.,smoothstep(.5,.4,hd))*(1.-.4*dot(h.xy,h.xy));}
+  vec2 ss=px/uRes; vec2 uv; float k;
+  if(uPhoto>.5){
+    float A=uRes.x/uRes.y,pa=uPhotoAspect; vec2 q=ss;
+    if(pa>A){q.y=(ss.y-.5)*A/pa+.5;k=uPanoSize.x/uRes.x;}else{q.x=(ss.x-.5)*pa/A+.5;k=uPanoSize.y/uRes.y;}
+    if(q.x<0.||q.x>1.||q.y<0.||q.y>1.)return vec3(.035,.05,.047);
+    uv=q;
+  }else{
+    uv=vec2(uYaw+(ss.x-.5)*fov/360.,ss.y);
+    k=max(fov/360.*uPanoSize.x/uRes.x,uPanoSize.y/uRes.y);
+  }
+  k/=zoom;
+  float lod=cell>0.?log2(max(k*cell*.7,1.)):log2(max(k,1.))+p.a.y;
+  vec3 c; vec3 aux; samplePano(uv,lod,c,aux);
+  if(p.b.x>0.){vec3 c2;vec3 a2;samplePano(uv,lod+1.5,c2,a2);c=clamp(c+p.b.x*(c-c2),0.,1.2);}
+  vec3 col=p.M*pow(max(c,0.),vec3(2.2))+vec3(p.c.z,p.c.w,p.d.x)*aux.r;
+  col=pow(max(col,0.),vec3(1./2.2));
+  float night=uLight<1.?1.:0.;
+  float l=dot(col,vec3(.299,.587,.114));
+  col=mix(vec3(l),col,p.a.z*mix(1.,.3,night));
+  float E=min(1.,uLight*p.a.w);
+  col*=mix(E,1.,aux.b);
+  if(p.b.z>0.){vec3 ch;vec3 ah;samplePano(uv,lod+p.b.w,ch,ah);float h=ah.g;vec3 ir=iron(h);col=mix(col*.5+ir*.14,ir,p.b.z*smoothstep(.42,.72,h));}
+  if(p.c.y>0.){float ang=(s.x-.5)*fov;float wd=mix(1.5,7.,clamp((s.y-.55)/.45,0.,1.));float w=(1.-smoothstep(wd*.6,wd,abs(ang)))*smoothstep(.52,.62,s.y);col=mix(col,vec3(l*.1),w*.92);}
+  col*=facet;
+  col+=(hash(gl_FragCoord.xy+floor(uTime*24.)*vec2(17.,31.))-.5)*night*(.1*(1.-E)+.02);
+  return mix(col,vec3(1.),ring*.7);
+}
+void main(){
+  vec2 s=vec2(vUV.x,1.-vUV.y); vec3 col;
+  if(uMixMode>.5) col=s.x<uMix?shade(uA,s):shade(uB,s);
+  else if(uMix>=.999) col=shade(uB,s);
+  else col=mix(shade(uA,s),shade(uB,s),uMix);
+  outColor=vec4(clamp(col,0.,1.),1.);
+}`;
+
+const canvas=$('#gl'), stage=$('#stage');
+const gl=canvas.getContext('webgl2',{antialias:false,alpha:false});
+if(!gl){stage.insertAdjacentHTML('beforeend','<div class="nogl">This page needs WebGL 2, which this browser has turned off. Try a current Chrome, Edge, Firefox or Safari.</div>');return;}
+function sh(type,src){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s));return s;}
+const prog=gl.createProgram();gl.attachShader(prog,sh(gl.VERTEX_SHADER,VS));gl.attachShader(prog,sh(gl.FRAGMENT_SHADER,FS));gl.linkProgram(prog);
+if(!gl.getProgramParameter(prog,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(prog));
+gl.useProgram(prog);gl.bindVertexArray(gl.createVertexArray());
+const U={};const loc=n=>(n in U)?U[n]:(U[n]=gl.getUniformLocation(prog,n));
+const tex=[0,1,2,3].map(()=>gl.createTexture());
+['uPano','uAux','uAtlas','uAtlasAux'].forEach((n,i)=>gl.uniform1i(loc(n),i));
+function upload(i,src,repeat){
+  gl.activeTexture(gl.TEXTURE0+i);gl.bindTexture(gl.TEXTURE_2D,tex[i]);
+  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,true);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,src);
+  gl.generateMipmap(gl.TEXTURE_2D);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,repeat?gl.REPEAT:gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+}
+const colMajor=m=>[m[0],m[3],m[6],m[1],m[4],m[7],m[2],m[5],m[8]];
+function setP(pre,a){
+  gl.uniform4f(loc(pre+'.a'),a.fov,a.blur||0,a.sat,a.sens);
+  gl.uniform4f(loc(pre+'.b'),a.sharpen||0,a.facet||0,a.heat||0,a.heatBlur||0);
+  gl.uniform4f(loc(pre+'.c'),a.fovea||0,a.blind||0,a.uvW[0],a.uvW[1]);
+  gl.uniform4f(loc(pre+'.d'),a.uvW[2],0,0,0);
+  gl.uniformMatrix3fv(loc(pre+'.M'),false,colMajor(a.M));
+}
+
+/* atlas once */
+{const A=new Layers(1024,256);paintAtlas(A);upload(2,A.cv[0],false);upload(3,packAux(A,true),false);}
+
+/* ---------- state ---------- */
+const state={scene:'meadow',animal:'bee',prev:'bee',fade:1,compare:true,split:.5,yaw:.5,yawTarget:null,T:0,panoSize:[PW,PH],photoAspect:1};
+const pano=new Layers(PW,PH);
+const painters={meadow:paintMeadow,yard:paintYard,night:paintNight};
+
+function loadScene(name){
+  $('#busy').hidden=false;
+  requestAnimationFrame(()=>setTimeout(()=>{
+    pano.clear();painters[name](pano);
+    upload(0,pano.cv[0],true);upload(1,packAux(pano,false),true);
+    state.panoSize=[PW,PH];state.scene=name;state.yaw=.5;state.yawTarget=null;
+    $('#busy').hidden=true;renderUI();
+  },20));
+}
+function loadPhoto(file){
+  const img=new Image();
+  img.onload=()=>{
+    const sc=Math.min(1,2048/Math.max(img.width,img.height)), w=Math.max(2,Math.round(img.width*sc)), h=Math.max(2,Math.round(img.height*sc));
+    const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(img,0,0,w,h);
+    const d=x.getImageData(0,0,w,h).data, aux=new ImageData(w,h), o=aux.data;
+    for(let i=0;i<d.length;i+=4){const r=d[i]/255,g=d[i+1]/255,b=d[i+2]/255;o[i]=Math.round(Math.max(0,Math.min(1,(b*1.1-(r+g)*.35)*.8))*255);o[i+1]=102;o[i+2]=0;o[i+3]=255;}
+    upload(0,c,false);upload(1,aux,false);
+    state.panoSize=[w,h];state.photoAspect=w/h;state.scene='photo';
+    URL.revokeObjectURL(img.src);renderUI();
+  };
+  img.onerror=()=>{$('#keyline').textContent='That file could not be read as an image. Try a JPEG or PNG.';};
+  img.src=URL.createObjectURL(file);
+}
+
+/* ---------- UI ---------- */
+function wlColor(nm){
+  if(nm<380)return '#8b6fd6';
+  let r=0,g=0,b=0;
+  if(nm<440){r=-(nm-440)/60;b=1;}else if(nm<490){g=(nm-440)/50;b=1;}else if(nm<510){g=1;b=-(nm-510)/20;}else if(nm<580){r=(nm-510)/70;g=1;}else if(nm<645){r=1;g=-(nm-645)/65;}else{r=1;}
+  const f=nm<420?.4+.6*(nm-380)/40:nm>680?.4+.6*(700-nm)/20:1;
+  const c=v=>Math.round(255*Math.pow(v*f,.8));
+  return `rgb(${c(r)},${c(g)},${c(b)})`;
+}
+function renderAnimals(){
+  $('#animals').innerHTML=ANIMALS.map((a,i)=>`<button class="ani" data-a="${a.id}" aria-pressed="${a.id===state.animal}" title="Key ${i+1}">
+    <span class="nm">${a.name}</span>
+    <span class="row"><span class="dots">${a.peaks.map(p=>`<i style="background:${wlColor(p)}"></i>`).join('')}${a.ir?'<i style="background:linear-gradient(135deg,#ff7a1a,#c21d4b)"></i>':''}</span><span class="fv">${a.fov}°</span></span>
+  </button>`).join('');
+}
+function chartSVG(a){
+  const X=nm=>22+(nm-300)/420*292, Y=v=>88-v*70;
+  let stops='';for(let nm=380;nm<=700;nm+=20)stops+=`<stop offset="${(nm-380)/320}" stop-color="${wlColor(nm)}"/>`;
+  const curves=a.peaks.map(pk=>{let d='';for(let nm=300;nm<=720;nm+=4){const sg=pk<400?32:44+ (pk-450)*.05;const v=Math.exp(-Math.pow((nm-pk)/sg,2));d+=(d?'L':'M')+X(nm).toFixed(1)+','+Y(v).toFixed(1);}
+    const col=wlColor(pk);return `<path d="${d}" fill="none" stroke="${col}" stroke-width="2.2"/><text x="${X(pk)}" y="${Y(1)-5}" text-anchor="middle" font-size="9" fill="currentColor" font-family="IBM Plex Mono, monospace">${pk}</text>`;}).join('');
+  return `<svg viewBox="0 0 320 124" role="img" aria-label="Receptor sensitivity peaks for ${a.name}: ${a.peaks.join(', ')} nanometers" style="color:var(--muted)">
+    <defs><linearGradient id="spec" x1="0" x2="1">${stops}</linearGradient>
+    <pattern id="hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" fill="#8b6fd6" opacity=".25"/><line x1="0" y1="0" x2="0" y2="5" stroke="#8b6fd6" stroke-width="2"/></pattern></defs>
+    <line x1="22" x2="314" y1="88" y2="88" stroke="currentColor" stroke-opacity=".35"/>
+    ${curves}
+    <rect x="${X(300)}" y="94" width="${X(380)-X(300)}" height="8" fill="url(#hatch)"/>
+    <rect x="${X(380)}" y="94" width="${X(700)-X(380)}" height="8" fill="url(#spec)"/>
+    ${[300,400,500,600,700].map(n=>`<text x="${X(n)}" y="116" text-anchor="middle" font-size="9" fill="currentColor" font-family="IBM Plex Mono, monospace">${n}</text>`).join('')}
+    <text x="${X(340)}" y="91" text-anchor="middle" font-size="8" fill="currentColor" font-family="IBM Plex Mono, monospace">UV</text>
+  </svg>`;
+}
+function renderInfo(){
+  const a=byId[state.animal];
+  $('#info').innerHTML=`<div><h2>${a.name}</h2><p class="latin">${a.latin}</p></div>
+    <dl class="stats"><dt>Color receptors</dt><dd>${a.rec}</dd><dt>Sharpness</dt><dd>${a.acuity}</dd><dt>Field of view</dt><dd>~${a.fov}°${a.bino?` (${a.bino}° with both eyes)`:''}</dd><dt>Flicker limit</dt><dd>${a.flick}</dd></dl>
+    <div class="chart">${chartSVG(a)}<div class="cap">Receptor sensitivity peaks, in nanometers.${a.ir?' Heat pits add long-wave infrared, far off this chart.':''} The hatched band is ultraviolet, invisible to you.</div></div>
+    <ul class="facts">${a.facts.map(f=>`<li>${f}</li>`).join('')}</ul>`;
+}
+function renderRuler(){
+  const photo=state.scene==='photo', a=byId[state.animal];
+  $('#ruler').style.opacity=photo?.45:1;
+  const seg=(el,deg)=>{el.style.left=((180-deg/2)/360*100)+'%';el.style.width=(deg/360*100)+'%';};
+  seg($('#rFov'),a.fov);seg($('#rHuman'),200);
+  if(a.bino){$('#rBino').hidden=false;seg($('#rBino'),a.bino);}else $('#rBino').hidden=true;
+  $('#rulerCap').innerHTML=photo?'Field of view is not shown for photos. The photo is treated as what is straight ahead.'
+    :`<b>${a.name}: ~${a.fov}°</b> packed into the frame.${a.bino?` Darker band: ${a.bino}° seen by both eyes.`:''} Dashed outline: your ~200°.`;
+}
+function renderHud(){
+  const a=byId[state.animal], bits=[];
+  if(state.scene!=='photo')bits.push(`${a.fov}° view`);
+  if(a.time<1)bits.push(`time ${(1/a.time).toFixed(a.time<.5?0:1)}× slower`);
+  if(SCENES[state.scene].light<1)bits.push(a.sens>=2?'good in dim light':'struggles in dim light');
+  $('#hud').innerHTML=bits.map(b=>`<span class="pill">${b}</span>`).join('');
+  $('#tagR').textContent=a.name;
+  const cmp=state.compare&&state.animal!=='human';
+  $('#tagL').hidden=!cmp;$('#split').hidden=!cmp;
+  $('#tagR').hidden=!cmp&&false;
+  $('#split').style.left=(state.split*100)+'%';
+}
+function renderFinds(){
+  const sc=SCENES[state.scene];
+  $('#findsTitle').hidden=!sc.finds.length;
+  $('#finds').innerHTML=sc.finds.length?sc.finds.map((f,i)=>`<button class="find" data-f="${i}"><b>${f.t}</b><span class="try">Try: ${byId[f.a].name}</span><span class="why">${f.why}</span></button>`).join('')
+    :'<p class="why" style="color:var(--muted);margin:0">A normal photo has no ultraviolet or heat data, so the bee, fly and eagle use an estimate from the blue channel and the rattlesnake shows no heat. Colors, sharpness, facets and dim-light effects all apply.</p>';
+}
+function renderUI(){
+  document.querySelectorAll('.seg[data-scene]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.scene===state.scene));
+  $('#photoLbl').style.background=state.scene==='photo'?'var(--ink)':'';$('#photoLbl').style.color=state.scene==='photo'?'var(--bg)':'';
+  document.querySelectorAll('.ani').forEach(b=>b.setAttribute('aria-pressed',b.dataset.a===state.animal));
+  $('#compare').setAttribute('aria-pressed',state.compare);
+  $('#keyline').textContent=byId[state.animal].key;
+  renderInfo();renderRuler();renderHud();renderFinds();
+}
+function setAnimal(id){
+  if(id===state.animal)return;
+  state.prev=state.animal;state.animal=id;state.fade=0;renderUI();
+}
+
+document.addEventListener('click',e=>{
+  const s=e.target.closest('.seg[data-scene]');if(s){loadScene(s.dataset.scene);return;}
+  const a=e.target.closest('.ani');if(a){setAnimal(a.dataset.a);return;}
+  const f=e.target.closest('.find');if(f){const it=SCENES[state.scene].finds[+f.dataset.f];state.compare=false;setAnimal(it.a);state.yawTarget=it.u;renderUI();stage.scrollIntoView({behavior:'smooth',block:'nearest'});return;}
+  if(e.target.closest('#compare')){state.compare=!state.compare;renderUI();}
+});
+$('#photo').addEventListener('change',e=>{const f=e.target.files[0];if(f)loadPhoto(f);e.target.value='';});
+
+let drag=null, splitDrag=false;
+$('#split').addEventListener('pointerdown',e=>{splitDrag=true;$('#split').setPointerCapture(e.pointerId);e.stopPropagation();});
+$('#split').addEventListener('pointermove',e=>{if(!splitDrag)return;const r=stage.getBoundingClientRect();state.split=Math.max(.04,Math.min(.96,(e.clientX-r.left)/r.width));renderHud();});
+$('#split').addEventListener('pointerup',()=>{splitDrag=false;});
+$('#split').addEventListener('keydown',e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){state.split=Math.max(.04,Math.min(.96,state.split+(e.key==='ArrowLeft'?-.04:.04)));renderHud();e.preventDefault();e.stopPropagation();}});
+stage.addEventListener('pointerdown',e=>{if(splitDrag||state.scene==='photo')return;drag={x:e.clientX,yaw:state.yaw};stage.classList.add('dragging');stage.setPointerCapture(e.pointerId);});
+stage.addEventListener('pointermove',e=>{if(!drag)return;const fov=byId[state.animal].fov;state.yaw=drag.yaw-(e.clientX-drag.x)/stage.clientWidth*fov/360;state.yawTarget=null;$('#dragHint').style.opacity=0;});
+const endDrag=()=>{drag=null;stage.classList.remove('dragging');};
+stage.addEventListener('pointerup',endDrag);stage.addEventListener('pointercancel',endDrag);
+stage.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){state.yaw+=(e.key==='ArrowLeft'?-10:10)/360;state.yawTarget=null;e.preventDefault();}});
+document.addEventListener('keydown',e=>{if(e.target.closest('input,textarea'))return;const n=parseInt(e.key,10);if(n>=1&&n<=ANIMALS.length)setAnimal(ANIMALS[n-1].id);});
+
+function resize(){const dpr=Math.min(2,window.devicePixelRatio||1);canvas.width=Math.round(stage.clientWidth*dpr);canvas.height=Math.round(stage.clientHeight*dpr);state.dpr=dpr;}
+new ResizeObserver(resize).observe(stage);resize();
+
+const sprBuf=new Float32Array(32), sprIdx=new Float32Array(8), flyBuf=new Float32Array(26*4);
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(.05,(now-last)/1000);last=now;
+  const cur=byId[state.animal];
+  state.T+=dt*cur.time;
+  if(state.fade<1)state.fade=Math.min(1,state.fade+dt/.35);
+  if(state.yawTarget!=null){let d=((state.yawTarget-state.yaw)%1+1.5)%1-.5;state.yaw+=d*Math.min(1,dt*5);if(Math.abs(d)<.0005)state.yawTarget=null;}
+  gl.viewport(0,0,canvas.width,canvas.height);
+  gl.uniform2f(loc('uRes'),canvas.width,canvas.height);
+  gl.uniform2f(loc('uPanoSize'),state.panoSize[0],state.panoSize[1]);
+  gl.uniform1f(loc('uYaw'),state.yaw);
+  gl.uniform1f(loc('uLight'),SCENES[state.scene].light);
+  gl.uniform1f(loc('uTime'),now/1000);
+  gl.uniform1f(loc('uPhoto'),state.scene==='photo'?1:0);
+  gl.uniform1f(loc('uPhotoAspect'),state.photoAspect);
+  gl.uniform1f(loc('uDpr'),state.dpr||1);
+  const cmp=state.compare&&state.animal!=='human';
+  if(cmp){setP('uA',byId.human);setP('uB',cur);gl.uniform1f(loc('uMixMode'),1);gl.uniform1f(loc('uMix'),state.split);}
+  else{const e=state.fade*state.fade*(3-2*state.fade);setP('uA',byId[state.prev]);setP('uB',cur);gl.uniform1f(loc('uMixMode'),0);gl.uniform1f(loc('uMix'),e);}
+  const sp=state.scene==='photo'?[]:sprites(state.scene,state.T);
+  sprBuf.fill(0);sprIdx.fill(0);sp.forEach((s,i)=>{sprBuf.set(s.slice(0,4),i*4);sprIdx[i]=s[4];});
+  gl.uniform4fv(loc('uSpr'),sprBuf);gl.uniform1fv(loc('uSprIdx'),sprIdx);gl.uniform1i(loc('uSprN'),sp.length);
+  const ff=fireflies(state.scene,state.T);flyBuf.fill(0);ff.forEach((f,i)=>flyBuf.set(f,i*4));
+  gl.uniform4fv(loc('uFly'),flyBuf);gl.uniform1i(loc('uFlyN'),ff.length);
+  gl.drawArrays(gl.TRIANGLES,0,3);
+  requestAnimationFrame(frame);
+}
+renderAnimals();renderUI();loadScene('meadow');requestAnimationFrame(frame);
+window.__be={state,setAnimal,loadScene,renderUI};
+})();
+</script>
+
+</body>
+</html>
