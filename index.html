@@ -27,6 +27,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 #app{position:fixed;inset:0;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
 #c{display:block;width:100%;height:100%;cursor:grab}
 #c.drag{cursor:grabbing}
+#c.locked{cursor:none}
 .xhair{position:absolute;left:50%;top:50%;width:64px;height:64px;margin:-32px 0 0 -32px;pointer-events:none}
 .xhair svg{width:100%;height:100%;overflow:visible}
 .xhair .tick{stroke:rgba(255,255,255,.8);stroke-width:2}
@@ -174,12 +175,12 @@ button{font:inherit;color:inherit;cursor:pointer}
   <div class="overlay" id="intro">
     <div class="modal">
       <h1>Borrowed Eyes Expedition</h1>
-      <p>14 animals are hiding in this valley. Find one, photograph it with the camera button, and you get to see through its eyes.</p>
+      <p>14 animals are hiding in this valley. Find one, take its photo, and you get to see through its eyes.</p>
       <dl class="controls">
-        <dt>Move</dt><dd>W A S D, or drag the left side on a phone</dd>
-        <dt>Look</dt><dd>Drag</dd>
-        <dt>Height</dt><dd>↑ and ↓ keys, or the arrow buttons</dd>
-        <dt>Stuck?</dt><dd>Tap Hint</dd>
+        <dt>Move</dt><dd>W A S D or arrow keys. On a phone, drag the left side.</dd>
+        <dt>Look</dt><dd>Mouse (Esc frees it). On a phone, drag the right side.</dd>
+        <dt>Up / down</dt><dd>Space and Shift, or the ▲ ▼ buttons</dd>
+        <dt>Photo</dt><dd>Click, F, or the camera button</dd>
       </dl>
       <button class="go" id="start" disabled>Building the valley</button>
     </div>
@@ -1130,7 +1131,7 @@ document.addEventListener('click',e=>{
   const u=e.target.closest('[data-use]');if(u){setAnimal(u.dataset.use);$('#bookOv').hidden=true;return;}
 });
 $('#bPrev').onclick=()=>flip(-1);$('#bNext').onclick=()=>flip(1);$('#bClose').onclick=()=>{$('#bookOv').hidden=true;};
-$('#bookBtn').onclick=()=>openBook(ANIMALS.findIndex(a=>a.id===S.animal));
+$('#bookBtn').onclick=()=>{if(document.pointerLockElement)document.exitPointerLock();openBook(ANIMALS.findIndex(a=>a.id===S.animal));};
 $('#nightBtn').onclick=()=>toggleNight();
 $('#hintBtn').onclick=()=>toggleHint();
 $('#map').onclick=()=>$('#map').classList.toggle('big');
@@ -1138,7 +1139,7 @@ function toggleHint(){S.hint=!S.hint;$('#hintBtn').setAttribute('aria-pressed',S
 $('#cmpBtn').onclick=()=>toggleCompare();
 $('#snap').onclick=()=>{S.snapNow=true;};
 for(const [id,k] of [['#upBtn','up'],['#dnBtn','dn']]){const b=$(id);b.addEventListener('pointerdown',e=>{HOLD[k]=true;b.setPointerCapture(e.pointerId);e.preventDefault();});const off=()=>{HOLD[k]=false;};b.addEventListener('pointerup',off);b.addEventListener('pointercancel',off);b.addEventListener('lostpointercapture',off);}
-$('#start').onclick=()=>{$('#intro').hidden=true;S.started=true;S.t0=performance.now();toast('You start at the pond. Find the turtle basking on a log and photograph it with the camera button.');};
+$('#start').onclick=()=>{$('#intro').hidden=true;S.started=true;lockMouse();S.t0=performance.now();toast(TOUCH?'You start at the pond. Find the turtle basking on a log and tap the camera to photograph it.':'You start at the pond. Find the turtle basking on a log, then click to photograph it.');};
 $('#keep').onclick=()=>{$('#done').hidden=true;};
 function toggleNight(){S.nightTarget=S.nightTarget>.5?0:1;$('#nightBtn').textContent=S.nightTarget?'Daybreak':'Nightfall';toast(S.nightTarget?'Night falls. Some animals only come out now, and you will need eyes that work in the dark.':'Morning returns.');}
 function toggleCompare(){S.compare=!S.compare;$('#cmpBtn').setAttribute('aria-pressed',S.compare);$('#cmpline').hidden=!S.compare;$('#vlB').hidden=!S.compare;setAnimal(S.animal);}
@@ -1147,17 +1148,22 @@ function toggleCompare(){S.compare=!S.compare;$('#cmpBtn').setAttribute('aria-pr
 /* ---------------- input ---------------- */
 addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();
-  if(!$('#bookOv').hidden){if(k==='arrowright')flip(1);else if(k==='arrowleft')flip(-1);else if(k==='escape'||k==='b')$('#bookOv').hidden=true;e.preventDefault();return;}
+  if(!$('#bookOv').hidden){if(document.pointerLockElement)document.exitPointerLock();if(k==='arrowright')flip(1);else if(k==='arrowleft')flip(-1);else if(k==='escape'||k==='b')$('#bookOv').hidden=true;e.preventDefault();return;}
   if(!S.started)return;
-  if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','shift'].includes(k)){keys.add(k);e.preventDefault();}
-  if(k===' '||k==='enter'){S.snapNow=true;e.preventDefault();}
+  if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','shift',' '].includes(k)){keys.add(k);e.preventDefault();}
+  if(k==='f'||k==='enter'){S.snapNow=true;e.preventDefault();}
   if(k==='n')toggleNight();if(k==='c')toggleCompare();if(k==='h')toggleHint();if(k==='m')$('#map').classList.toggle('big');if(k==='b')openBook(ANIMALS.findIndex(a=>a.id===S.animal));
   if(k==='q'||k==='e'){const o=owned(),i=o.findIndex(a=>a.id===S.animal);setAnimal(o[(i+(k==='e'?1:-1)+o.length)%o.length].id);}
 });
 addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
 addEventListener('blur',()=>keys.clear());
 const ptrs=new Map(); const joy={id:null,x:0,y:0,dx:0,dy:0};
+const locked=()=>document.pointerLockElement===canvas;
+function lockMouse(){if(TOUCH||locked()||!canvas.requestPointerLock)return;try{const r=canvas.requestPointerLock();if(r&&r.catch)r.catch(()=>{});}catch(_){}}
+document.addEventListener('mousemove',e=>{if(!locked())return;S.yaw-=e.movementX*.0024;S.pitch=Math.max(-1.45,Math.min(1.45,S.pitch-e.movementY*.0024));});
+document.addEventListener('pointerlockchange',()=>{canvas.classList.toggle('locked',locked());if(!locked()&&S.started&&$('#bookOv').hidden&&$('#done').hidden)toast('Mouse released. Click the scene to look around again.');});
 canvas.addEventListener('pointerdown',e=>{
+  if(e.pointerType==='mouse'){if(locked()){if(e.button===0)S.snapNow=true;return;}if(S.started&&e.button===0)lockMouse();}
   canvas.setPointerCapture(e.pointerId);
   if(e.pointerType!=='mouse'&&e.clientX<innerWidth*.42&&joy.id==null){joy.id=e.pointerId;joy.x=e.clientX;joy.y=e.clientY;joy.dx=joy.dy=0;const j=$('#joy');j.hidden=false;j.style.left=e.clientX+'px';j.style.top=e.clientY+'px';$('#joyKnob').style.transform='';return;}
   ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});canvas.classList.add('drag');
@@ -1228,14 +1234,13 @@ function updateWorld(dt,sdt){
 }
 function updatePlayer(dt){
   const a=cur();let f=0,s=0;
-  if(keys.has('w'))f+=1;if(keys.has('s'))f-=1;
-  const hv=(keys.has('arrowup')||HOLD.up?1:0)-(keys.has('arrowdown')||HOLD.dn?1:0);
+  if(keys.has('w')||keys.has('arrowup'))f+=1;if(keys.has('s')||keys.has('arrowdown'))f-=1;
+  const hv=(keys.has(' ')||HOLD.up?1:0)-(keys.has('shift')||HOLD.dn?1:0);
   if(hv){const lo=-(a.water?0:a.eye)+.04;S.hOff=Math.max(lo,Math.min(15,(S.hOff||0)+hv*dt*(1.2+Math.abs(S.hOff||0)*.6)));}
-  if(keys.has('d'))s+=1;if(keys.has('a'))s-=1;
-  if(keys.has('arrowleft'))S.yaw+=1.8*dt;if(keys.has('arrowright'))S.yaw-=1.8*dt;
+  if(keys.has('d')||keys.has('arrowright'))s+=1;if(keys.has('a')||keys.has('arrowleft'))s-=1;
   f-=joy.dy;s+=joy.dx;
   const L=Math.hypot(f,s);if(L>1){f/=L;s/=L;}
-  const sp=a.speed*(keys.has('shift')?1.7:1);
+  const sp=a.speed;
   S.x+=(-Math.sin(S.yaw)*f+Math.cos(S.yaw)*s)*sp*dt;S.z+=(-Math.cos(S.yaw)*f-Math.sin(S.yaw)*s)*sp*dt;
   S.x=Math.max(-76,Math.min(46,S.x));S.z=Math.max(-62,Math.min(62,S.z));
   if(a.water){const dx=S.x-POND[0],dz=S.z-POND[1],d=Math.hypot(dx,dz);if(d>7.8){S.x=POND[0]+dx/d*7.8;S.z=POND[1]+dz/d*7.8;}}
@@ -1277,7 +1282,7 @@ function updateSpot(dt){
   ring.style.strokeDashoffset=138.2*(1-S.spot);
   $('#snap').classList.toggle('ready',!!best);
   const hint=cs.find(c=>c.why);
-  if(best){msg.textContent=TOUCH?'Something is here. Tap the camera.':'Something is here. Press Space or click the camera.';msg.hidden=false;}
+  if(best){msg.textContent=TOUCH?'Something is here. Tap the camera.':'Something is here. Click or press F to take the photo.';msg.hidden=false;}
   else if(hint){msg.textContent=hint.why;msg.hidden=false;}else msg.hidden=true;
   if(S.snapNow){if(best)acquire(best.t);else{S.flash=.5;toast(hint?hint.why:'Nothing new in this shot. Keep looking.');}}
   S.snapNow=false;
