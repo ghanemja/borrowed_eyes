@@ -50,7 +50,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .bottom{position:absolute;left:0;right:0;bottom:0;padding:0 12px calc(env(safe-area-inset-bottom,0px) + 12px);display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none}
 .abil{font-size:13px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px 11px;max-width:min(680px,100%);text-align:center;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .abil b{font-weight:600}
-.dock{display:flex;gap:6px;pointer-events:auto;max-width:100%;overflow-x:auto;padding:4px;scrollbar-width:none;background:rgba(10,12,11,.55);border:1px solid var(--line);border-radius:10px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.dock{display:flex;gap:8px;pointer-events:auto;max-width:100%;overflow-x:auto;padding:12px 8px 6px;scrollbar-width:none;background:rgba(10,12,11,.55);border:1px solid var(--line);border-radius:10px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .dock::-webkit-scrollbar{display:none}
 .card{flex:0 0 auto;width:74px;height:64px;border-radius:7px;border:1px solid rgba(0,0,0,.25);background:var(--paper);position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:3px 3px 4px;color:var(--pink)}
 .card .sil{position:absolute;inset:5px 6px 17px;background:#241e16;-webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat}
@@ -60,6 +60,9 @@ button{font:inherit;color:inherit;cursor:pointer}
 .card.locked .sil{background:#3a3226;opacity:.8}
 .card.locked .nm{color:var(--pmuted)}
 .card.found .sil{background:#1f5f58}
+.card.fresh{box-shadow:0 0 0 2px var(--amber),0 0 18px 4px rgba(242,179,61,.75);animation:freshPulse 1.2s ease-in-out infinite}
+.card.fresh::after{content:"NEW";position:absolute;top:-7px;right:-5px;font:800 9px/1 var(--body);letter-spacing:.05em;color:#1b1206;background:var(--amber);padding:3px 5px;border-radius:999px}
+@keyframes freshPulse{0%,100%{box-shadow:0 0 0 2px var(--amber),0 0 10px 2px rgba(242,179,61,.55)}50%{box-shadow:0 0 0 3px var(--amber),0 0 22px 7px rgba(242,179,61,.9)}}
 .card[aria-pressed="true"]{box-shadow:0 0 0 2px var(--amber);background:#fff7e6}
 .card[aria-pressed="true"] .sil{background:#b86a12}
 .mk{position:absolute;border:2.5px solid var(--amber);border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;box-shadow:0 0 12px rgba(242,179,61,.6)}
@@ -137,7 +140,9 @@ button{font:inherit;color:inherit;cursor:pointer}
   .snap{bottom:calc(env(safe-area-inset-bottom,0px) + 160px)}
   .pname{font-size:30px}
 }
-@media (prefers-reduced-motion:reduce){.mk::after,.snap.ready{animation:none}.toast,.unlock .inner{transition:none}.flip-out,.flip-in,.flip-out-r,.flip-in-r{animation:none}}
+@media (max-width:1180px){#height{display:none}}
+@media (max-width:1020px){#heading{display:none}}
+@media (prefers-reduced-motion:reduce){.card.fresh,.mk::after,.snap.ready{animation:none}.toast,.unlock .inner{transition:none}.flip-out,.flip-in,.flip-out-r,.flip-in-r{animation:none}}
 </style>
 
 </head>
@@ -1101,7 +1106,7 @@ function applyParams(a){
   u.uHeat.value=a.heat||0;u.uHeatBlur.value=a.heatBlur||0;u.uFovea.value=a.fovea?1:0;u.uFish.value=a.fish||0;u.uBand.value=a.band||0;u.uTilt.value=a.tilt||0;
   u.uEcho.value=a.echo||0;u.uGrade.value=a.grade||0;u.uPix.value=a.pix||0;u.uCham.value=a.cham||0;u.uHeatBright.value=a.heatBright||0;}
 const HOLD={up:false,dn:false};
-function setAnimal(id){S.hOff=0;
+function setAnimal(id){S.hOff=0;if(S.fresh)S.fresh.delete(id);
   if(!S.found[id])return;S.animal=id;S.flash=Math.max(S.flash,.3);
   const a=cur();
   if(a.water){const d=Math.hypot(S.x-POND[0],S.z-POND[1]);if(d>7.5){S.x=POND[0]+5;S.z=POND[1]+2;}}
@@ -1111,7 +1116,7 @@ function setAnimal(id){S.hOff=0;
 
 /* ---------------- UI: dock of silhouettes, flip book ---------------- */
 function renderDock(){
-  $('#dock').innerHTML=ANIMALS.map((a,i)=>{const f=!!S.found[a.id];return `<button class="card ${f?'found':'locked'}" data-a="${a.id}" aria-pressed="${a.id===S.animal}" aria-label="${f?a.name:'Unknown animal '+(i+1)}"><span class="k">${String(i+1).padStart(2,'0')}</span><span class="sil" style="--m:url(${a.sil})"></span><span class="nm">${f?(a.short||a.name):'?'}</span></button>`;}).join('');
+  $('#dock').innerHTML=ANIMALS.map((a,i)=>{const f=!!S.found[a.id];const nw=S.fresh&&S.fresh.has(a.id);return `<button class="card ${f?'found':'locked'}${nw?' fresh':''}" data-a="${a.id}" aria-pressed="${a.id===S.animal}" aria-label="${f?a.name:'Unknown animal '+(i+1)}"><span class="k">${String(i+1).padStart(2,'0')}</span><span class="sil" style="--m:url(${a.sil})"></span><span class="nm">${f?(a.short||a.name):'?'}</span></button>`;}).join('');
   const n=Object.keys(S.found).length-1;$('#count').innerHTML=`<b>${n}</b> of ${ANIMALS.length-1} found`;
   const act=$('#dock .card[aria-pressed="true"]');if(act)act.scrollIntoView({block:'nearest',inline:'center'});}
 function pageHTML(i){
@@ -1129,7 +1134,7 @@ function flip(dir){const b=$('#book');const ni=(S.book+dir+ANIMALS.length)%ANIMA
 let toastTimer=0;
 function toast(msg){const t=$('#toast');t.textContent=msg;t.style.opacity=1;clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.style.opacity=0,3000);}
 document.addEventListener('click',e=>{
-  const c=e.target.closest('.card');if(c){const id=c.dataset.a;if(S.found[id])setAnimal(id);else openBook(ANIMALS.findIndex(a=>a.id===id));return;}
+  const c=e.target.closest('.card');if(c){const id=c.dataset.a;if(S.fresh)S.fresh.delete(id);if(S.found[id]){setAnimal(id);renderDock();}else openBook(ANIMALS.findIndex(a=>a.id===id));return;}
   const u=e.target.closest('[data-use]');if(u){setAnimal(u.dataset.use);$('#bookOv').hidden=true;return;}
 });
 $('#bPrev').onclick=()=>flip(-1);$('#bNext').onclick=()=>flip(1);$('#bClose').onclick=()=>{$('#bookOv').hidden=true;};
@@ -1302,10 +1307,11 @@ function finishAcquire(t){
   const u=$('#unlock');$('#unSil').style.setProperty('--m',`url(${t.sil})`);$('#unImg').src=photo;$('#unCap').textContent=`${t.name} eyes unlocked`;
   u.hidden=false;u.classList.remove('on');requestAnimationFrame(()=>requestAnimationFrame(()=>u.classList.add('on')));
   setTimeout(()=>{u.hidden=true;u.classList.remove('on');},2600);
-  setTimeout(()=>setAnimal(t.id),900);
-  toast(`You spotted the ${t.name.toLowerCase()}. Its eyes are yours.`);
+  S.fresh=S.fresh||new Set();S.fresh.add(t.id);
+  toast(`You spotted the ${t.name.toLowerCase()}! Click its glowing card at the bottom to see through its eyes.`);
+  setTimeout(()=>{const c=document.querySelector(`.card[data-a="${t.id}"]`);if(c)c.scrollIntoView({block:'nearest',inline:'center',behavior:'smooth'});},300);
   const nf=Object.keys(S.found).length-1;
-  if(nf===1)setTimeout(()=>toast('Your eyes collect at the bottom. Tap Compare to see them next to yours.'),3300);
+  if(nf===1)setTimeout(()=>toast('Once you switch eyes, tap Compare to see them next to yours.'),3600);
   if(nf===4)setTimeout(()=>toast('Some animals only come out at night. Try Nightfall once you have night-ready eyes.'),3300);
   renderDock();
   if(Object.keys(S.found).length===ANIMALS.length)setTimeout(finish,2800);
